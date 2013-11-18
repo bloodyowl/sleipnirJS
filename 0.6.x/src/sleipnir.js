@@ -387,6 +387,63 @@
             }
         })
 
+      , Uuid = ns.Uuid = klass(function(Super, statics){
+            var rfcMap = { 8: "-", 13: "-", 18: "-", 23: "-" , 14: "4" }
+
+            statics.CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('')
+            statics.uuid = function(length, radix, map_args){
+                var i = 0, l = typeof arguments[0] == "number" ? arguments[0] : 36
+                  , radix = typeof arguments[1] == "number" ? Math.abs(Math.min(arguments[1], statics.CHARS.length)) : statics.CHARS.length
+                  , map = this && this.constructor === Uuid && this.__map__ ? this.__map__
+                        : !arguments.length ? rfcMap
+                        : {}
+                  , map_args = arguments[2]
+                  , uuid = []
+
+                for ( ; i < l; i++ )
+                    uuid[i] = function(i, mapped, v){
+                        if ( !mapped )
+                          return statics.CHARS[ Math.floor(Math.random()*radix) ]
+
+                        if ( typeof mapped.handleInvoke == "function" || typeof mapped == "function" )
+                          v = invoke(mapped, [map_args])
+
+                        v = mapped ? mapped.toString() : toType(mapped)
+
+                        return v[0]
+                    }(i, map[i])
+
+                return uuid.join("")
+            }
+
+            return {
+                constructor: function(){
+                    var uuidDict = arguments[0] && arguments[0].constructor === Object ? arguments[0]
+                                 : typeof arguments[0] == "string" ? { length: 36, rfc: true }
+                                 : {}
+
+                    this.__rfc__ = !!uuidDict.rfc
+                    this.__map__ = !this.__rfc__ && uuidDict.map && uuidDict.map.constructor === Object ? uuidDict.map
+                                 : this.__rfc__ ? function(add){
+                                       var o = {}
+                                         , k
+
+                                       for ( k in rfcMap ) if ( rfcMap.hasOwnProperty(k) )
+                                          o[k] = rfcMap[k]
+                                       for ( k in add ) if ( add.hasOwnProperty(k) )
+                                          o[k] = add[k]
+
+                                       return o
+                                   }( uuidDict.map && uuidDict.map.constructor === Object ? uuidDict.map : {} )
+                                 : {}
+                    this.__length__ = !this.__rfc__ && +uuidDict.length ? +uuidDict.length : 36
+                    this.__radix__ = !this.__rfc__ && +uuidDict.radix ? uuidDict.radix : statics.CHARS.length
+                }
+              , uuid: function(){
+                    return invoke(statics.uuid, [this.__length__, this.__radix__, arguments[0]], this)
+                }
+            }
+        })
 
       , EventEmitter = ns.EventEmitter = klass({
             constructor: function(/*emitHandler*/){
@@ -1176,9 +1233,12 @@
       })
 
     , View = ns.View = klass(EventEmitter, {
-          constructor: function(/*template, data*/){
+          constructor: function(/*template, data, viewHandler*/){
               var args = slice(arguments)
                 , parsedTemplate, k, i, l
+                , viewHandler
+
+              viewHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function"||typeof args[args.length-1] == "function" ) ? args.pop() : null
 
               this.__data__ = args[args.length-1] && typeof args[args.length-1].constructor.hasImplemented == "function"
                             && (args[args.length-1].constructor.hasImplemented(Model) || args[args.length-1].constructor.hasImplemented(Collection)) ? args.pop()
@@ -1199,6 +1259,15 @@
               if ( this.__defaultDOMEvents__ )
                 this.DOMEvent(this.__defaultDOMEvents__)
 
+              if ( viewHandler )
+                (function(view){
+                    function html(){ return invoke(view.html, arguments, view) }
+                    function recover(){ return invoke(view.recover, arguments, view) }
+
+                    var model = view.__data__
+
+                    invoke(viewHandler, { $html: html, $recover: recover, $model: model, 0: html, 1: recover, 2: model, length: 3 })
+                }(this))
           }
         , __useModel__: Model
         , useModel: function(/*M*/){
@@ -1296,20 +1365,11 @@
               return 0
           }( statics.BLOB_COMPAT )
 
-          statics.rlocal = function(){
-              return new RegExp([
-                  "^"
-                , location.protocol, "//"
-                , location.hostname
-                , "\\S*\\.css($|\\?|#)"
-              ].join(""), "i")
-          }()
-
           statics.isLocalCSSFile = function(a){
               return function(url){
                   a.href = url
 
-                  return a.href.match(statics.rlocal)
+                  return a.domain === location.domain
               }
           }(document.createElement("a"))
 
@@ -1317,29 +1377,30 @@
               constructor: function(){
                   var args = slice(arguments)
                     , sheetHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : null
-                    , startingRules = isArray(args[args.length-1]) ? args.pop() : []
+                    , startingRules = args[args.length-1] && args[args.length-1].constructor === Object ? args.pop() : {}
+                    , external
                     , node = function( sheet, _node, node, blob, url ){
                           if ( _node && _node.hasOwnProperty("tagName") && "link, style".indexOf(_node.tagName.toLowerCase()) != -1 )
                             return _node
 
-                          _node = typeof _node == "string" ? _node : toType(_node)
+                          _node = function(split){
+                              return external = split[0] === "css", split.pop()
+                          }( (typeof _node == "string" ? _node : toType(_node)).split("!") )
 
-                          if ( statics.isLocalCSSFile(_node) ) {
+                          if ( external && statics.isLocalCSSFile(_node) ) {
                             node = function(node){
                                 node.rel = "stylesheet"
                                 node.href = _node
+                                return node
                             }( document.createElement("link") )
 
-                            sheet.then(function(sheet){
-                                var i = 0, l = startingRules.length
-
-                                for ( ; i < l; i++ )
-                                  sheet.insertRule(startingRules[i])
+                            domReady.then(function(nodes){
+                                nodes.head.appendChild(node)
                             })
 
                           } else if ( statics.mode & 1 ) {
                             if ( statics.mode & 4 )
-                              blob = new Blob(startingRules, {type: "text/css"}),
+                              blob = new Blob([""], {type: "text/css"}),
                               url = URL.createObjectURL(blob),
                               node = function(node){
                                   node.rel = "stylesheet"
@@ -1347,18 +1408,15 @@
                                   return node
                               }( document.createElement("link") )
                             else
-                              node = function(node){
-                                  node.textContent = "\n"+startingRules.join("\n")
-                                  return node
-                              }( document.createElement("style") )
+                              node = document.createElement("style"),
+                              node.appendChild(document.createTextNode())
 
                             domReady.then(function(nodes){
                                 nodes.head.appendChild(node)
                             })
                           } else {
                             document.createStyleSheet(),
-                            node = { sheet: document.styleSheets[document.styleSheets.length-1] },
-                            node.sheet.cssText = startingRules.join("")
+                            node = { sheet: document.styleSheets[document.styleSheets.length-1] }
                           }
 
                           return node
@@ -1380,6 +1438,8 @@
                                 }
 
                                 sheet.__sheet__ = node.sheet||node.styleSheet
+
+                                sheet.rule(startingRules)
                                 resolve(sheet)
                             }
                             wait()
@@ -1388,114 +1448,57 @@
 
                     if ( sheetHandler )
                       this.__stylesheetReady__.then(function(sheet){
-                          var insert = function(){
-                                  return invoke(sheet.insertRule, arguments, sheet)
-                              }
-                            , remove = function(){
-                                  return invoke(sheet.removeRule, arguments, sheet)
-                              }
-                            , cssRules = function(){
-                                  return invoke(sheet.getCssRules, arguments, sheet)
-                              }
+                          function rule(){
+                              return invoke(sheet.rule, arguments, sheet)
+                          }
 
                           return function(){
-                              invoke(sheetHandler, { $sheet: sheet, $insert: insert, $remove: remove, $cssRules: cssRules, 0: sheet, 1: insert, 2: remove, 3: cssRules, length: 4 })
+                              invoke(sheetHandler, { $rule: rule, 0: rule, length:1 })
                           }
                       }(this))
 
               }
-            , insertRule: function(){
-                  var rcssrulesplit = /^([^\{]*){(.*)}$/
-                  function decomposeRule(cssText){
-                      var match = cssText.match(rcssrulesplit)
-
-                      if ( match )
-                        return [match[1], match[2]]
-                  }
-
-                  return function(){
-                      var args, ruleName, cssText
-
-                      if ( arguments[0] && arguments[0].constructor === Object )
-                        return function(rules, k){
-                            for ( k in rules ) if ( rules.hasOwnProperty(k) )
-                              sheet.insertRule(k, rules[k])
-                        }(this, arguments[0])
-
-                      if ( isArray(arguments[0]) )
-                        return function(rules, i, l){
-                            for ( i = 0, l = rules.length; i < l; i++ )
-                              invoke(sheet.insertRule, [rules[i]], sheet)
-                        }(this, arguments[0])
-
-                      args = slice(arguments)
-                      cssText = typeof args[args.length-1] == "string" ? trim(args.pop()) : toType(args.pop())
-                      ruleName = typeof args[0] == "string" ? args[0] : null
-
-                      return this.__stylesheetReady__.then(function(sheet){
-                          var hasRule = ruleName ? (sheet.__cssRules__=sheet.__cssRules__||{}).hasOwnProperty(ruleName) : false
-                            , idx = hasRule ? sheet.__cssRules__[ruleName] : (sheet.__sheet__.cssRules||sheet.__sheet__.rules).length||0
-
-                          if ( hasRule )
-                            (sheet.__sheet__.deleteRule||sheet.__sheet__.removeRule)(idx)
-                          else if ( ruleName )
-                            sheet.__cssRules__[ruleName] = idx
-
-                          if ( statics.mode & 1 )
-                            sheet.__sheet__.insertRule(cssText, idx)
-                          else
-                            invoke(sheet.__sheet__.addRule, [].concat(decomposeRule(cssText)).concat([idx]), sheet)
-
-                          return idx
-                      })
-                  }
-              }()
-            , getCssRules: function(){
+            , rule: function(){
                   var args = slice(arguments)
-                    , cssRulesHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : null
-                    , ruleName = typeof args[args.length-1] == "string" ? args.pop() : toType(args.pop())
-                    , output = new Promise(function(sheet){
-                          return function(resolve, reject){
-                              sheet.__stylesheetReady__.then(function(){
-                                  var idx = (sheet.__cssRules__=sheet.__cssRules__||{}).hasOwnProperty(ruleName) ? sheet.__cssRules__[ruleName] : null
+                    , ruleHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function"||typeof args[args.length-1] == "function") ? args.pop() : null
+                    , selector, cssText, output
 
-                                  if ( idx )
-                                    resolve((sheet.__sheet__.cssRules||sheet.__sheet__.rules)[idx])
-                                  else
-                                    reject(new ReferenceError)
-                              })
-                          }
-                      }(this))
+                  if ( args[0] && args[0].constructor === Object )
+                    return function(sheet, rules, k, rv){
+                        var o = {}, _args
 
-                  if ( cssRulesHandler )
-                    output = output.then(cssRulesHandler)
+                        for ( k in rules ) if ( rules.hasOwnProperty(k) ) {
+                          _args = isArray(rules[k]) ? [k].concat(rules[k]) : [k, rules[k]]
+                          o[k] = invoke(sheet.rule, _args, sheet)
+                        }
 
-                  return output
-              }
-            , deleteRule: function(){
-                  var ruleNames = arguments.length > 1 ? slice(arguments)
-                                : isArray(arguments[0]) ? arguments[0]
-                                : [arguments[0]]
+                        return o
+                    }(this, args.shift() )
 
-                  return this.__stylesheetReady__.then(function(sheet){
-                      for ( var i = 0, e = 0, l = ruleNames.length; i < l; i++ )
-                        if ( typeof ruleNames[i] == "string" ) {
-                            if ( sheet.__cssRules__.hasOwnProperty(ruleNames[i]) ) {
-                              e = e+1
+                  selector = typeof args[0] == "string" ? args.shift() : toType(args.shift())
+                  cssText = typeof args[0] == "string" ? "{"+args.shift()+"}" : "{}"
+
+                  output = new Promise(function(sheet){
+                      return function(resolve){
+                          sheet.__stylesheetReady__.then(function(){
+                              var idx = (sheet.__sheet__.cssRules||sheet.__sheet__.rules).length||0
 
                               if ( statics.mode & 1 )
-                                sheet.__sheet__.deleteRule(sheet.__cssRules__[ruleNames[i]])
+                                invoke(sheet.__sheet__.insertRule, [selector+cssText, idx], sheet.__sheet__)
                               else
-                                sheet.__sheet__.removeRule(sheet.__cssRules__[ruleNames[i]])
-                            }
-                        }
-                        else if ( typeof ruleNames == "number" ) {
-                            e = e+1,
-                            (sheet.__sheet__.deleteRule||sheet.__sheet.removeRule)(ruleNames[i])
-                        }
+                                invoke(sheet.__sheet__.addRule, [selector, cssText, idx], sheet.__sheet__)
 
-                      return e
-                  })
+                              resolve( (sheet.__sheet__.cssRules||sheet.__sheet__.rules)[idx])
+                          })
+                      }
+                  }(this))
+
+                  if ( ruleHandler )
+                    output = output.then(ruleHandler)
+
+                  return function(){
+                      return output.then(arguments[0] && (typeof arguments[0].handleInvoke == "function"||typeof arguments[0] == "function") ? arguments[0] : function(){})
+                  }
               }
             , disable: function(){
                   return this.__stylesheetReady__.then(function(sheet){
@@ -1634,6 +1637,25 @@
                     output = output.then(matrixHandler)
 
                   return output
+              }
+          }
+      })
+
+    , Transition = ns.Transition = klass(function(Super, statics){
+          statics.CSS_TRANSITION_COMPAT = "getComputedStyle" in root  && "DOMStringMap" in root && "TransitionEvent" in root ? 0x1 : "WebKitTransitionEvent" in root ? 0x2 : 0
+          statics.CSS_TRANSITION_PROPERTY = statics.CSS_TRANSITION_COMPAT & 0x1 ? "transition" : statics.CSS_TRANSITION_COMPAT & 0x2 ? "-webkit-transition" : null
+          statics.CSS_TRANSITIONEND_EVENT = statics.CSS_TRANSITION_COMPAT & 0x1 ? "transitionend" : statics.CSS_TRANSITION_COMPAT & 0x2 ? "webkitTransitionEnd" : null
+
+          statics.defaultTransitionShim = function(){}
+
+          return {
+              constructor: function(){
+                  var args = slice(arguments)
+                    , transitionDict = args[0] && args[0].constructor === Object ? args.shift() : {}
+                    , properties = []
+              }
+            , animate: function(){
+
               }
           }
       })
@@ -1884,14 +1906,14 @@
                   } else switch (operand){
                     case "\n":
                     case "\r":
-                        if ( input.operator !== "{" )
-                          break
+                        break
                     case "\\" :
                         input.forceNextOperandAsSymbol = true
                         break
                     default:
                         input.pile += operand
                         input.forceNextOperandAsSymbol = false
+                        break
                   }
 
                   return invoke(read, arguments)
@@ -2025,6 +2047,7 @@
 
                   } else switch (operand){
                     case "\\":
+                        input.pile += "\\"
                         input.forceNextOperandAsSymbol = true
                         break
                     default:
@@ -2141,6 +2164,12 @@
                   documentElement: docElt
                 , head: docHead
                 , body: docBody
+                , title: (document.getElementsByTagName("title")||[])[0]
+                , viewport: function(metas, i, l){
+                      for ( i = 0, l = metas.length; i < l; i++ )
+                        if ( metas[i].name == "viewport" )
+                          return meta[i]
+                  }( document.getElementsByTagName("meta") )
               })
           }
 
@@ -2161,6 +2190,7 @@
           addEventListener(document, "readystatechange", onreadystatechange, true)
       })
 
+    root.__sleipnir__ = ns
     root.sleipnir = function(k){
         function sleipnir(){
             if ( arguments[0] && (typeof arguments[0].handleInvoke == "function" || typeof arguments[0] == "function") )
@@ -2177,4 +2207,4 @@
         return sleipnir
     }()
 
-}(window, { version: "ES3-0.6.1" }));
+}(window, { version: "ES3-0.6.2" }));
