@@ -1,4 +1,4 @@
-// variable to preserve : $super, $static, $e, $resolve, $reject, $progress, $, $$, $next, $route
+// variables to preserve : $super, $static, $e, $resolve, $reject, $progress, $, $$, $next, $route
 
 ;(function(root, ns){ "use strict"
 
@@ -24,16 +24,18 @@
             return function(o){
                 return toString.call(o)
             }
-        }(Object.prototype.toString)
-
-      , isArray = Array.isArray || function(o){
-            return toType(o) == "[object Array]"
-        }
+        }( Object.prototype.toString )
 
       , isNative = function(fn){
             if ( typeof fn == "function" )
               return fn.toString().match(risnative)
         }
+
+      , isArray = function(hasIsArray){
+            return hasIsArray ? Array.isArray : function(o){
+                return toType(o) == "[object Array]"
+            }
+        }( isNative(Array.isArray) )
 
       , slice = function(slice){
             return function(o, idx){
@@ -52,7 +54,7 @@
 
                 return rv
             }
-        }(Array.prototype.slice)
+        }( Array.prototype.slice )
 
       , indexOf = function(hasIndexOf){
             if ( hasIndexOf )
@@ -191,17 +193,17 @@
               , statics = {}
               , k, __trans_implements__
 
-            , prototype = function(props){
-                  return typeof props == "function" ? (invoke(props, { $Super: SuperClass, $static: statics, 0: SuperClass, 1: statics, length: 2 })||{})
-                         : toType(props) == "[object Object]" ? props
-                         : {}
-              }( arguments[arguments.length-1] )
+              , prototype = function(props){
+                    return typeof props == "function" ? (invoke(props, { $Super: SuperClass, $static: statics, 0: SuperClass, 1: statics, length: 2 })||{})
+                           : toType(props) == "[object Object]" ? props
+                           : {}
+                }( arguments[arguments.length-1] )
 
-            , Class = prototype.hasOwnProperty("constructor") ? function(){
-                  var constructor = prototype.constructor
-                  delete prototype.constructor
-                  return constructor
-              }() : function(){}
+              , Class = prototype.hasOwnProperty("constructor") ? function(){
+                    var constructor = prototype.constructor
+                    delete prototype.constructor
+                    return constructor
+                }() : function(){}
 
             Class.create = function(){
                 var args = arguments
@@ -295,6 +297,7 @@
             return G
         }
 
+
       , Invoker = ns.Invoker = klass(function(Super, statics){
             statics.invoke = invoke
 
@@ -331,6 +334,7 @@
                 }
             }
         })
+
 
       , Serializer = ns.Serializer = klass(function(Super, statics){
             statics.serialize = ns.serialize = function(delimiter, separator){
@@ -387,9 +391,7 @@
             }
         })
 
-      , Uuid = ns.Uuid = klass(function(Super, statics){
-            var rfcMap = { 8: "-", 13: "-", 18: "-", 23: "-" , 14: "4" }
-
+      , Uuid = ns.Uuid = klass(function(Super, statics, rfcMap, distributed){
             statics.CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('')
             statics.uuid = function(length, radix, map_args){
                 var i = 0, l = typeof arguments[0] == "number" ? arguments[0] : 36
@@ -398,7 +400,7 @@
                         : !arguments.length ? rfcMap
                         : {}
                   , map_args = arguments[2]
-                  , uuid = []
+                  , uuid = [], rv
 
                 for ( ; i < l; i++ )
                     uuid[i] = function(i, mapped, v){
@@ -413,8 +415,13 @@
                         return v[0]
                     }(i, map[i])
 
-                return uuid.join("")
+                rv = uuid.join("")
+
+                return indexOf(distributed, rv) == -1 ? rv : invoke(uuid, arguments, this)
             }
+
+            rfcMap = { 8: "-", 13: "-", 18: "-", 23: "-" , 14: "4" }
+            distributed = []
 
             return {
                 constructor: function(){
@@ -444,6 +451,7 @@
                 }
             }
         })
+
 
       , EventEmitter = ns.EventEmitter = klass({
             constructor: function(/*emitHandler*/){
@@ -575,6 +583,7 @@
                 return isArray(handlers) ? [].concat(handlers) : handlers ? [handlers] : []
             }
         })
+
 
       , Promise = ns.Promise = klass(function(Super, statics){
             statics.PENDING = PENDING
@@ -807,6 +816,7 @@
             }
         })
 
+
     , Iterator = ns.Iterator = klass({
           constructor: function(/* range, opt_keys */){
               var opt_keys = !!arguments[1]
@@ -830,6 +840,7 @@
               return this.__range__[idx]
           }
       })
+
 
     , Router = ns.Router = klass(function(Super, statics){
           statics.defaultDispatcher = function(r, c){
@@ -957,6 +968,7 @@
               }
           }
       })
+
 
     , Model = ns.Model = klass(EventEmitter, function(Super, statics){
           function buildFromHash(model, items, root){
@@ -1228,434 +1240,6 @@
                     serialized[i] = this.__models__[i].serialize()
 
                   return unescape(this.__useSerializer__.serialize(serialized))
-              }
-          }
-      })
-
-    , View = ns.View = klass(EventEmitter, {
-          constructor: function(/*template, data, viewHandler*/){
-              var args = slice(arguments)
-                , parsedTemplate, k, i, l
-                , viewHandler
-
-              viewHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function"||typeof args[args.length-1] == "function" ) ? args.pop() : null
-
-              this.__data__ = args[args.length-1] && typeof args[args.length-1].constructor.hasImplemented == "function"
-                            && (args[args.length-1].constructor.hasImplemented(Model) || args[args.length-1].constructor.hasImplemented(Collection)) ? args.pop()
-                            : args[args.length-1] && args[args.length-1].constructor === Object ? new this.__useModel__(args.pop())
-                            : new this.__useModel__
-              this.__template__ = typeof args[0] == "string" ? trim(args.shift()) : ""
-
-              parsedTemplate = htmlExpression.parse(this.__template__, this.__data__)
-
-              this.__fragment__ = parsedTemplate.tree
-              this.__elements__ = parsedTemplate.assignments
-
-              this.__elements__.root = this.__elements__.root || []
-              for ( i = 0, l = this.__fragment__.childNodes.length; i < l; i++ )
-                if ( indexOf(this.__elements__.root, this.__fragment__.childNodes[i]) == -1 )
-                  this.__elements__.root.push(this.__fragment__.childNodes[i])
-
-              if ( this.__defaultDOMEvents__ )
-                this.DOMEvent(this.__defaultDOMEvents__)
-
-              if ( viewHandler )
-                (function(view){
-                    function html(){ return invoke(view.html, arguments, view) }
-                    function recover(){ return invoke(view.recover, arguments, view) }
-
-                    var model = view.__data__
-
-                    invoke(viewHandler, { $html: html, $recover: recover, $model: model, 0: html, 1: recover, 2: model, length: 3 })
-                }(this))
-          }
-        , __useModel__: Model
-        , useModel: function(/*M*/){
-              var M = arguments[0]
-
-              if ( M && typeof M.hasImplemented == "function" && (M.hasImplemented(Model) || M.hasImplemented(Collection))  )
-                return this.__useModel__ = M, true
-              return false
-          }
-        , html: function(){
-              if ( !this.__fragment__.childNodes.length )
-                this.recover()
-
-              return this.__fragment__
-          }
-        , recover: function(){
-              var i, l
-
-              if ( !this.__fragment__ || this.__fragment__.nodeType !== 11 )
-                this.__fragment__ = document.createDocumentFragment()
-
-              for ( i = 0, l = this.__elements__.root; i < l; i++ )
-                this.__fragment__.appendChild(this.__elements__.root[i])
-          }
-        , clone: function(){
-              return new this.constructor(this.__template__, this.__data__)
-          }
-        , element: function(/*ref*/){
-              var refs = arguments.length > 1 ? slice(arguments)
-                       : isArray(arguments[0]) ? arguments[0]
-                       : [arguments[0]]
-                , rv = [], i = 0, l = refs.length
-                , _ref, _nodes
-
-              for ( ; i < l; i++ ) {
-                _ref = typeof refs[i] == "string" ? refs[i] : toType(refs[i])
-                _nodes = this.__elements__[_ref]
-
-                if ( _nodes && _nodes.length == 1 )
-                  rv[i] = _nodes[0]
-                else if ( _nodes )
-                  rv[i] = _nodes
-                else
-                  rv[i] = null
-              }
-
-              return rv
-          }
-        , DOMEvent: function(/*eltRef, event, handler, capture*/){
-              var eltRef, elts, event, handler, capture, i, l
-
-              if ( arguments.length <= 2 && arguments[0].constructor == Object )
-                return function(view, events, capture, k, i, l){
-                    for ( k in events ) if ( events.hasOwnProperty(k) )
-                      (function(eltRef, events, k){
-                          for ( k in events ) if ( events.hasOwnProperty(k) )
-                            view.DOMEvent(eltRef, k, events[k], !!capture)
-                      }(k, events[k]))
-                }(this, arguments[0], arguments[1])
-
-              eltRef = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
-              event = typeof arguments[1] == "string" ? arguments[1] : toType(arguments[1])
-              handler = arguments[2] && (typeof arguments[2].handleEvent == "function" || typeof arguments[2] == "function" ) ? arguments[2] : "function"
-              capture = !!arguments[3]
-
-              for ( elts = this.__elements__[eltRef], i = 0, l = elts.length; i < l; i++ )
-                addEventListener(elts[i], event, handler, capture)
-          }
-      })
-
-    , StyleSheet = ns.StyleSheet = klass(Promise, function(Super, statics){
-          statics.BLOB_COMPAT = function(blob, url){
-              try {
-                  blob = new Blob([""], { type: "text/plain" })
-                  url = URL.createObjectURL(blob)
-
-                  if ( "msClose" in blob )
-                    throw new Error
-              } catch(e){
-                  return 0
-              }
-              return 1
-          }()
-
-          statics.mode = function(blob, node){
-              if ( blob )
-                return 5
-
-              try {
-                  node = document.createElement("style")
-                  node.textContent = node.innerText = ""
-                  return 3
-              } catch(e){}
-
-              return 0
-          }( statics.BLOB_COMPAT )
-
-          statics.isLocalCSSFile = function(a){
-              return function(url){
-                  a.href = url
-
-                  return a.domain === location.domain
-              }
-          }(document.createElement("a"))
-
-          return {
-              constructor: function(){
-                  var args = slice(arguments)
-                    , sheetHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : null
-                    , startingRules = args[args.length-1] && args[args.length-1].constructor === Object ? args.pop() : {}
-                    , external
-                    , node = function( sheet, _node, node, blob, url ){
-                          if ( _node && _node.hasOwnProperty("tagName") && "link, style".indexOf(_node.tagName.toLowerCase()) != -1 )
-                            return _node
-
-                          _node = function(split){
-                              return external = split[0] === "css", split.pop()
-                          }( (typeof _node == "string" ? _node : toType(_node)).split("!") )
-
-                          if ( external && statics.isLocalCSSFile(_node) ) {
-                            node = function(node){
-                                node.rel = "stylesheet"
-                                node.href = _node
-                                return node
-                            }( document.createElement("link") )
-
-                            domReady.then(function(nodes){
-                                nodes.head.appendChild(node)
-                            })
-
-                          } else if ( statics.mode & 1 ) {
-                            if ( statics.mode & 4 )
-                              blob = new Blob([""], {type: "text/css"}),
-                              url = URL.createObjectURL(blob),
-                              node = function(node){
-                                  node.rel = "stylesheet"
-                                  node.href = url
-                                  return node
-                              }( document.createElement("link") )
-                            else
-                              node = document.createElement("style"),
-                              node.appendChild(document.createTextNode())
-
-                            domReady.then(function(nodes){
-                                nodes.head.appendChild(node)
-                            })
-                          } else {
-                            document.createStyleSheet(),
-                            node = { sheet: document.styleSheets[document.styleSheets.length-1] }
-                          }
-
-                          return node
-                      }( this, args.shift() )
-
-                    this.__stylesheetReady__ = new Promise(function(sheet){
-                        return function(resolve){
-                            function wait(){
-                                if (!node.sheet && !node.styleSheet)
-                                  return setTimeout(wait, 4)
-
-                                try {
-                                    if ( node.sheet )
-                                      node.sheet.cssRules.length
-                                    else
-                                      node.styleSheet.rules.length
-                                } catch(e){
-                                  return setTimeout(wait, 4)
-                                }
-
-                                sheet.__sheet__ = node.sheet||node.styleSheet
-
-                                sheet.rule(startingRules)
-                                resolve(sheet)
-                            }
-                            wait()
-                        }
-                    }(this))
-
-                    if ( sheetHandler )
-                      this.__stylesheetReady__.then(function(sheet){
-                          function rule(){
-                              return invoke(sheet.rule, arguments, sheet)
-                          }
-
-                          return function(){
-                              invoke(sheetHandler, { $rule: rule, 0: rule, length:1 })
-                          }
-                      }(this))
-
-              }
-            , rule: function(){
-                  var args = slice(arguments)
-                    , ruleHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function"||typeof args[args.length-1] == "function") ? args.pop() : null
-                    , selector, cssText, output
-
-                  if ( args[0] && args[0].constructor === Object )
-                    return function(sheet, rules, k, rv){
-                        var o = {}, _args
-
-                        for ( k in rules ) if ( rules.hasOwnProperty(k) ) {
-                          _args = isArray(rules[k]) ? [k].concat(rules[k]) : [k, rules[k]]
-                          o[k] = invoke(sheet.rule, _args, sheet)
-                        }
-
-                        return o
-                    }(this, args.shift() )
-
-                  selector = typeof args[0] == "string" ? args.shift() : toType(args.shift())
-                  cssText = typeof args[0] == "string" ? "{"+args.shift()+"}" : "{}"
-
-                  output = new Promise(function(sheet){
-                      return function(resolve){
-                          sheet.__stylesheetReady__.then(function(){
-                              var idx = (sheet.__sheet__.cssRules||sheet.__sheet__.rules).length||0
-
-                              if ( statics.mode & 1 )
-                                invoke(sheet.__sheet__.insertRule, [selector+cssText, idx], sheet.__sheet__)
-                              else
-                                invoke(sheet.__sheet__.addRule, [selector, cssText, idx], sheet.__sheet__)
-
-                              resolve( (sheet.__sheet__.cssRules||sheet.__sheet__.rules)[idx])
-                          })
-                      }
-                  }(this))
-
-                  if ( ruleHandler )
-                    output = output.then(ruleHandler)
-
-                  return function(){
-                      return output.then(arguments[0] && (typeof arguments[0].handleInvoke == "function"||typeof arguments[0] == "function") ? arguments[0] : function(){})
-                  }
-              }
-            , disable: function(){
-                  return this.__stylesheetReady__.then(function(sheet){
-                      if ( !sheet.__sheet__.disabled )
-                        sheet.__sheet__.disabled = true
-
-                      return true
-                  })
-              }
-            , enable: function(){
-                  return this.__stylesheetReady__.then(function(sheet){
-                      if ( sheet.__sheet__.disabled )
-                        sheet.__sheet__.disabled = false
-
-                      return false
-                  })
-              }
-          }
-      })
-
-    , Point = klass({
-          constructor: function(){
-              this.x = typeof arguments[0] == "number" ? arguments[0] : 0
-              this.y = typeof arguments[1] == "number" ? arguments[1] : 0
-          }
-      })
-
-    , Matrix = klass({
-          constructor: function(bcr, origin){
-              this.__bcr__ = bcr || BCR.getBoundingClientRect(docBody)
-              this.__origin__ = origin || { x:0, y:0 }
-          }
-        , left: function(){ return Math.round( this.__bcr__.left - this.__origin__.x ) }
-        , top: function(){ return Math.round( this.__bcr__.top - this.__origin__.y ) }
-        , width: function(){ return Math.round(this.__bcr__.width) }
-        , contentWidth: function(){ return Math.round( this.__bcr__.contentWidth ) }
-        , height: function(){ return Math.round(this.__bcr__.height) }
-        , contentHeight: function(){ return Math.round(this.__bcr__.contentHeight) }
-        , C: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width/2 - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height/2 - this.__origin__.y)) }
-        , NW: function(){ return new Point(Math.round(this.__bcr__.left - this.__origin__.x), Math.round(this.__bcr__.top - this.__origin__.y)) }
-        , N: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width/2 - this.__origin__.x), Math.round(this.__bcr__.top - this.__origin__.y)) }
-        , NE: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width - this.__origin__.x), Math.round(this.__bcr__.top - this.__origin__.y)) }
-        , E: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height/2 - this.__origin__.y)) }
-        , SE: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height - this.__origin__y)) }
-        , S: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width/2 - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height - this.__origin__y)) }
-        , SW: function(){ return new Point(Math.round(this.__bcr__.left - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height - this.__origin__y)) }
-        , W: function(){ return new Point(Math.round(this.__bcr__.left - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height/2 - this.__origin__.y)) }
-      })
-
-    , BCR = ns.BCR = klass(function(Super, statics){
-           function getBoundingClientRect(node){
-              var bcr, clientT, clientL, offsetX, offsetY
-
-              bcr = node.getBoundingClientRect()
-              clientT = docElt.clientTop || docBody.clientTop || 0
-              clientL = docElt.clientLeft || docBody.clientLeft || 0
-              offsetX = root.pageXOffset || root.scrollX || docElt.scrollLeft || docBody.scrollLeft || 0
-              offsetY = root.pageYOffset || root.scrollY || docElt.scrollTop || docBody.scrollTop || 0
-
-              return {
-                  left: node === docElt || node === docBody ? offsetX : bcr.left + offsetX - clientL
-                , top: node === docElt || node === docBody ? offsetY : bcr.left + offsetY - clientL
-                , width: bcr.width || bcr.right - bcr.left
-                , contentWidth: node.scrollWidth
-                , height: bcr.height || bcr.bottom - bcr.top
-                , contentHeight: node.scrollHeight
-              }
-          }
-
-          function getEventCoordinates(e){
-              var offsetX, offsetY
-
-              offsetX = root.pageXOffset || root.scrollX || docElt.scrollLeft || docBody.scrollLeft || 0
-              offsetY = root.pageYOffset || root.scrollY || docElt.scrollTop || docBody.scrollTop || 0
-
-              return {
-                  left: (e.pageX || e.clientX || 0) + offsetX
-                , top: (e.pageY || e.clientY || 0) + offsetY
-                , width: 0
-                , contentWidth: 0
-                , height: 0
-                , contentHeight: 0
-              }
-          }
-
-          return {
-              constructor: function(){
-                  var args = slice(arguments)
-                    , matrixHandler = args[args.length-1] && ( typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function" ) ? args.pop() : null
-                    , bcrDict = args[0] && args[0].constructor === Object ? args.shift()
-                              : args[0] && args[0].nodeType == 1 ? { node: args.shift() }
-                              : { node: document.documentElement }
-
-                  if ( bcrDict.node && bcrDict.node.nodeType == 1 )
-                    this.__node__ = bcrDict.node
-
-                  this.__defaultMatrixHandler__ = matrixHandler || function(matrix){ return matrix }
-              }
-            , compute: function(){
-                  var args = slice(arguments)
-                    , matrixHandler = args[args.length-1] && ( typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function" ) ? args.pop() : function(matrix){ return matrix }
-
-                    , node = this.__node__
-                    , referenceNode = args[args.length-1] && args[args.length-1].nodeType == 1 ? args.pop() : null
-                    , referenceEvent = !referenceNode && args[args.length-1] && (typeof args[args.length-1].pageX == "number" || typeof args[args.length-1].clientX == "number") ? args.pop() : null
-                    , referenceOrigin = !referenceNode && !referenceEvent && args[args.length-1] && args[args.length-1].hasOwnProperty("x") && args[args.length-1].hasOwnProperty("y") ? args.pop() : null
-                    , referenceCardinalPoint = typeof args[args.length-1] == "string" && Matrix.prototype.hasOwnProperty(args[args.length-1]) ? args.pop() : null
-
-                    , output = new Promise(function(resolve){
-                          domReady.then(function(){
-                              var ncr = getBoundingClientRect(node)
-                                , rcr
-
-                              if ( !referenceCardinalPoint ) {
-                                if ( referenceEvent )
-                                  rcr = getEventCoordinates(referenceEvent)
-                                else if ( referenceNode )
-                                  rcr = getBoundingClientRect(referenceNode)
-                                else if ( referenceOrigin )
-                                  rcr = { left: referenceOrigin.x, top: referenceOrigin.y }
-                                else
-                                  rcr = {left:0, top:0}
-
-                                return resolve( new Matrix(ncr, new Point(rcr.left, rcr.top)) )
-                              }
-
-                              return new BCR(referenceNode).compute(function(matrix){
-                                  resolve( new Matrix( ncr, matrix[referenceCardinalPoint]()) )
-                              })
-                          })
-                     })
-
-                  if ( this.__defaultMatrixHandler__ )
-                    output = output.then(this.__defaultMatrixHandler__)
-                  if ( matrixHandler )
-                    output = output.then(matrixHandler)
-
-                  return output
-              }
-          }
-      })
-
-    , Transition = ns.Transition = klass(function(Super, statics){
-          statics.CSS_TRANSITION_COMPAT = "getComputedStyle" in root  && "DOMStringMap" in root && "TransitionEvent" in root ? 0x1 : "WebKitTransitionEvent" in root ? 0x2 : 0
-          statics.CSS_TRANSITION_PROPERTY = statics.CSS_TRANSITION_COMPAT & 0x1 ? "transition" : statics.CSS_TRANSITION_COMPAT & 0x2 ? "-webkit-transition" : null
-          statics.CSS_TRANSITIONEND_EVENT = statics.CSS_TRANSITION_COMPAT & 0x1 ? "transitionend" : statics.CSS_TRANSITION_COMPAT & 0x2 ? "webkitTransitionEnd" : null
-
-          statics.defaultTransitionShim = function(){}
-
-          return {
-              constructor: function(){
-                  var args = slice(arguments)
-                    , transitionDict = args[0] && args[0].constructor === Object ? args.shift() : {}
-                    , properties = []
-              }
-            , animate: function(){
-
               }
           }
       })
@@ -1959,13 +1543,7 @@
       }()
 
     , htmlExpression = ns.htmlExpression = function(){
-          var createSubTree = function(){
-
-              }
-            , createNode = function(){
-
-              }
-            , operators = {
+          var operators = {
                   "[^]": function(stream, input, output){
                       return invoke(operators["+"], arguments)
                   }
@@ -2190,6 +1768,618 @@
           addEventListener(document, "readystatechange", onreadystatechange, true)
       })
 
+      , View = ns.View = klass(EventEmitter, {
+          constructor: function(/*template, data, viewHandler*/){
+              var args = slice(arguments)
+                , parsedTemplate, k, i, l
+                , viewHandler
+
+              viewHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function"||typeof args[args.length-1] == "function" ) ? args.pop() : null
+
+              this.__data__ = args[args.length-1] && typeof args[args.length-1].constructor.hasImplemented == "function"
+                            && (args[args.length-1].constructor.hasImplemented(Model) || args[args.length-1].constructor.hasImplemented(Collection)) ? args.pop()
+                            : args[args.length-1] && args[args.length-1].constructor === Object ? new this.__useModel__(args.pop())
+                            : new this.__useModel__
+              this.__template__ = typeof args[0] == "string" ? trim(args.shift()) : ""
+
+              parsedTemplate = htmlExpression.parse(this.__template__, this.__data__)
+
+              this.__fragment__ = parsedTemplate.tree
+              this.__elements__ = parsedTemplate.assignments
+
+              this.__elements__.root = this.__elements__.root || []
+              for ( i = 0, l = this.__fragment__.childNodes.length; i < l; i++ )
+                if ( indexOf(this.__elements__.root, this.__fragment__.childNodes[i]) == -1 )
+                  this.__elements__.root.push(this.__fragment__.childNodes[i])
+
+              if ( this.__defaultDOMEvents__ )
+                this.DOMEvent(this.__defaultDOMEvents__)
+
+              if ( viewHandler )
+                (function(view){
+                    function html(){ return invoke(view.html, arguments, view) }
+                    function recover(){ return invoke(view.recover, arguments, view) }
+
+                    var model = view.__data__
+
+                    invoke(viewHandler, { $html: html, $recover: recover, $model: model, 0: html, 1: recover, 2: model, length: 3 })
+                }(this))
+          }
+        , __useModel__: Model
+        , useModel: function(/*M*/){
+              var M = arguments[0]
+
+              if ( M && typeof M.hasImplemented == "function" && (M.hasImplemented(Model) || M.hasImplemented(Collection))  )
+                return this.__useModel__ = M, true
+              return false
+          }
+        , html: function(){
+              if ( !this.__fragment__.childNodes.length )
+                this.recover()
+
+              return this.__fragment__
+          }
+        , recover: function(){
+              var i, l
+
+              if ( !this.__fragment__ || this.__fragment__.nodeType !== 11 )
+                this.__fragment__ = document.createDocumentFragment()
+
+              for ( i = 0, l = this.__elements__.root; i < l; i++ )
+                this.__fragment__.appendChild(this.__elements__.root[i])
+          }
+        , clone: function(){
+              return new this.constructor(this.__template__, this.__data__)
+          }
+        , element: function(/*ref*/){
+              var refs = arguments.length > 1 ? slice(arguments)
+                       : isArray(arguments[0]) ? arguments[0]
+                       : [arguments[0]]
+                , rv = [], i = 0, l = refs.length
+                , _ref, _nodes
+
+              for ( ; i < l; i++ ) {
+                _ref = typeof refs[i] == "string" ? refs[i] : toType(refs[i])
+                _nodes = this.__elements__[_ref]
+
+                if ( _nodes && _nodes.length == 1 )
+                  rv[i] = _nodes[0]
+                else if ( _nodes )
+                  rv[i] = _nodes
+                else
+                  rv[i] = null
+              }
+
+              return rv
+          }
+        , DOMEvent: function(/*eltRef, event, handler, capture*/){
+              var eltRef, elts, event, handler, capture, i, l
+
+              if ( arguments.length <= 2 && arguments[0].constructor == Object )
+                return function(view, events, capture, k, i, l){
+                    for ( k in events ) if ( events.hasOwnProperty(k) )
+                      (function(eltRef, events, k){
+                          for ( k in events ) if ( events.hasOwnProperty(k) )
+                            view.DOMEvent(eltRef, k, events[k], !!capture)
+                      }(k, events[k]))
+                }(this, arguments[0], arguments[1])
+
+              eltRef = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
+              event = typeof arguments[1] == "string" ? arguments[1] : toType(arguments[1])
+              handler = arguments[2] && (typeof arguments[2].handleEvent == "function" || typeof arguments[2] == "function" ) ? arguments[2] : "function"
+              capture = !!arguments[3]
+
+              for ( elts = this.__elements__[eltRef], i = 0, l = elts.length; i < l; i++ )
+                addEventListener(elts[i], event, handler, capture)
+          }
+      })
+
+
+    , StyleSheet = ns.StyleSheet = klass(Promise, function(Super, statics){
+          statics.BLOB_COMPAT = function(blob, url){
+              try {
+                  blob = new Blob([""], { type: "text/plain" })
+                  url = URL.createObjectURL(blob)
+
+                  if ( "msClose" in blob )
+                    throw new Error
+              } catch(e){
+                  return 0
+              }
+              return 1
+          }()
+
+          statics.mode = function(blob, node){
+              if ( blob )
+                return 5
+
+              try {
+                  node = document.createElement("style")
+                  node.textContent = node.innerText = ""
+                  return 3
+              } catch(e){}
+
+              return 0
+          }( statics.BLOB_COMPAT )
+
+          statics.isLocalCSSFile = function(a){
+              return function(url){
+                  a.href = url
+
+                  return a.domain === location.domain
+              }
+          }(document.createElement("a"))
+
+          return {
+              constructor: function(){
+                  var args = slice(arguments)
+                    , sheetHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : null
+                    , startingRules = args[args.length-1] && args[args.length-1].constructor === Object ? args.pop() : {}
+                    , external
+                    , node = function( sheet, _node, node, blob, url ){
+                          if ( _node && _node.hasOwnProperty("tagName") && "link, style".indexOf(_node.tagName.toLowerCase()) != -1 )
+                            return _node
+
+                          _node = function(split){
+                              return external = split[0] === "css", split.pop()
+                          }( (typeof _node == "string" ? _node : toType(_node)).split("!") )
+
+                          if ( external && statics.isLocalCSSFile(_node) ) {
+                            node = nodeExpression.parse("link"+(typeof args[0] == "string" ? args.shift() : "")+"[rel=stylesheet][href=@url@]", {url: _node}).tree.childNodes[0]
+
+                            domReady.then(function(nodes){
+                                nodes.head.appendChild(node)
+                            })
+
+                          } else if ( statics.mode & 1 ) {
+                            if ( statics.mode & 4 )
+                              blob = new Blob([""], {type: "text/css"}),
+                              url = URL.createObjectURL(blob),
+                              node = nodeExpression.parse("link"+_node+"[rel=stylesheet][href=@url@]", {url: url}).tree.childNodes[0]
+                            else
+                              node = htmlExpression.parse("style"+_node+">text{}").tree.childNodes[0]
+
+                            domReady.then(function(nodes){
+                                nodes.head.appendChild(node)
+                            })
+                          } else {
+                            document.createStyleSheet(),
+                            node = { sheet: document.styleSheets[document.styleSheets.length-1] }
+                          }
+
+                          return node
+                      }( this, args.pop() )
+
+                    this.__stylesheetReady__ = new Promise(function(sheet){
+                        return function(resolve){
+                            function wait(){
+                                if (!node.sheet && !node.styleSheet)
+                                  return setTimeout(wait, 4)
+
+                                try {
+                                    if ( node.sheet )
+                                      node.sheet.cssRules.length
+                                    else
+                                      node.styleSheet.rules.length
+                                } catch(e){
+                                  return setTimeout(wait, 4)
+                                }
+
+                                sheet.__sheet__ = node.sheet||node.styleSheet
+
+                                sheet.rule(startingRules)
+                                resolve(sheet)
+                            }
+                            wait()
+                        }
+                    }(this))
+
+                    if ( sheetHandler )
+                      this.__stylesheetReady__.then(function(sheet){
+                          function rule(){
+                              return invoke(sheet.rule, arguments, sheet)
+                          }
+
+                          return function(){
+                              invoke(sheetHandler, { $rule: rule, 0: rule, length:1 })
+                          }
+                      }(this))
+
+              }
+            , rule: function(){
+                  var args = slice(arguments)
+                    , ruleHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function"||typeof args[args.length-1] == "function") ? args.pop() : null
+                    , selector, cssText, output
+
+                  if ( args[0] && args[0].constructor === Object )
+                    return function(sheet, rules, k, rv){
+                        var o = {}, _args
+
+                        for ( k in rules ) if ( rules.hasOwnProperty(k) ) {
+                          _args = isArray(rules[k]) ? [k].concat(rules[k]) : [k, rules[k]]
+                          o[k] = invoke(sheet.rule, _args, sheet)
+                        }
+
+                        return o
+                    }(this, args.shift() )
+
+                  selector = typeof args[0] == "string" ? args.shift() : toType(args.shift())
+                  cssText = typeof args[0] == "string" ? "{"+args.shift()+"}" : "{}"
+
+                  output = new Promise(function(sheet){
+                      return function(resolve){
+                          sheet.__stylesheetReady__.then(function(){
+                              var idx = (sheet.__sheet__.cssRules||sheet.__sheet__.rules).length||0
+
+                              if ( statics.mode & 1 )
+                                invoke(sheet.__sheet__.insertRule, [selector+cssText, idx], sheet.__sheet__)
+                              else
+                                invoke(sheet.__sheet__.addRule, [selector, cssText, idx], sheet.__sheet__)
+
+                              resolve( (sheet.__sheet__.cssRules||sheet.__sheet__.rules)[idx])
+                          })
+                      }
+                  }(this))
+
+                  if ( ruleHandler )
+                    output = output.then(ruleHandler)
+
+                  return function(){
+                      return output.then(arguments[0] && (typeof arguments[0].handleInvoke == "function"||typeof arguments[0] == "function") ? arguments[0] : function(){})
+                  }
+              }
+            , disable: function(){
+                  return this.__stylesheetReady__.then(function(sheet){
+                      if ( !sheet.__sheet__.disabled )
+                        sheet.__sheet__.disabled = true
+
+                      return true
+                  })
+              }
+            , enable: function(){
+                  return this.__stylesheetReady__.then(function(sheet){
+                      if ( sheet.__sheet__.disabled )
+                        sheet.__sheet__.disabled = false
+
+                      return false
+                  })
+              }
+          }
+      })
+
+
+    , Point = klass({
+          constructor: function(){
+              this.x = typeof arguments[0] == "number" ? arguments[0] : 0
+              this.y = typeof arguments[1] == "number" ? arguments[1] : 0
+          }
+      })
+
+    , Matrix = klass({
+          constructor: function(bcr, origin){
+              this.__bcr__ = bcr || BCR.getBoundingClientRect(docBody)
+              this.__origin__ = origin || { x:0, y:0 }
+          }
+        , left: function(){ return Math.round( this.__bcr__.left - this.__origin__.x ) }
+        , top: function(){ return Math.round( this.__bcr__.top - this.__origin__.y ) }
+        , width: function(){ return Math.round(this.__bcr__.width) }
+        , contentWidth: function(){ return Math.round( this.__bcr__.contentWidth ) }
+        , height: function(){ return Math.round(this.__bcr__.height) }
+        , contentHeight: function(){ return Math.round(this.__bcr__.contentHeight) }
+        , C: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width/2 - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height/2 - this.__origin__.y)) }
+        , NW: function(){ return new Point(Math.round(this.__bcr__.left - this.__origin__.x), Math.round(this.__bcr__.top - this.__origin__.y)) }
+        , N: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width/2 - this.__origin__.x), Math.round(this.__bcr__.top - this.__origin__.y)) }
+        , NE: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width - this.__origin__.x), Math.round(this.__bcr__.top - this.__origin__.y)) }
+        , E: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height/2 - this.__origin__.y)) }
+        , SE: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height - this.__origin__y)) }
+        , S: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width/2 - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height - this.__origin__y)) }
+        , SW: function(){ return new Point(Math.round(this.__bcr__.left - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height - this.__origin__y)) }
+        , W: function(){ return new Point(Math.round(this.__bcr__.left - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height/2 - this.__origin__.y)) }
+      })
+
+    , BCR = ns.BCR = klass(function(Super, statics){
+           function getBoundingClientRect(node){
+              var bcr, clientT, clientL, offsetX, offsetY
+
+              bcr = node.getBoundingClientRect()
+              clientT = docElt.clientTop || docBody.clientTop || 0
+              clientL = docElt.clientLeft || docBody.clientLeft || 0
+              offsetX = root.pageXOffset || root.scrollX || docElt.scrollLeft || docBody.scrollLeft || 0
+              offsetY = root.pageYOffset || root.scrollY || docElt.scrollTop || docBody.scrollTop || 0
+
+              return {
+                  left: node === docElt || node === docBody ? offsetX : bcr.left + offsetX - clientL
+                , top: node === docElt || node === docBody ? offsetY : bcr.left + offsetY - clientL
+                , width: bcr.width || bcr.right - bcr.left
+                , contentWidth: node.scrollWidth
+                , height: bcr.height || bcr.bottom - bcr.top
+                , contentHeight: node.scrollHeight
+              }
+          }
+
+          function getEventCoordinates(e){
+              var offsetX, offsetY
+
+              offsetX = root.pageXOffset || root.scrollX || docElt.scrollLeft || docBody.scrollLeft || 0
+              offsetY = root.pageYOffset || root.scrollY || docElt.scrollTop || docBody.scrollTop || 0
+
+              return {
+                  left: (e.pageX || e.clientX || 0) + offsetX
+                , top: (e.pageY || e.clientY || 0) + offsetY
+                , width: 0
+                , contentWidth: 0
+                , height: 0
+                , contentHeight: 0
+              }
+          }
+
+          return {
+              constructor: function(){
+                  var args = slice(arguments)
+                    , matrixHandler = args[args.length-1] && ( typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function" ) ? args.pop() : null
+                    , bcrDict = args[0] && args[0].constructor === Object ? args.shift()
+                              : args[0] && args[0].nodeType == 1 ? { node: args.shift() }
+                              : { node: document.documentElement }
+
+                  if ( bcrDict.node && bcrDict.node.nodeType == 1 )
+                    this.__node__ = bcrDict.node
+
+                  this.__defaultMatrixHandler__ = matrixHandler || function(matrix){ return matrix }
+              }
+            , compute: function(){
+                  var args = slice(arguments)
+                    , matrixHandler = args[args.length-1] && ( typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function" ) ? args.pop() : function(matrix){ return matrix }
+
+                    , node = this.__node__
+                    , referenceNode = args[args.length-1] && args[args.length-1].nodeType == 1 ? args.pop() : null
+                    , referenceEvent = !referenceNode && args[args.length-1] && (typeof args[args.length-1].pageX == "number" || typeof args[args.length-1].clientX == "number") ? args.pop() : null
+                    , referenceOrigin = !referenceNode && !referenceEvent && args[args.length-1] && args[args.length-1].hasOwnProperty("x") && args[args.length-1].hasOwnProperty("y") ? args.pop() : null
+                    , referenceCardinalPoint = typeof args[args.length-1] == "string" && Matrix.prototype.hasOwnProperty(args[args.length-1]) ? args.pop() : null
+
+                    , output = new Promise(function(resolve){
+                          domReady.then(function(){
+                              var ncr = getBoundingClientRect(node)
+                                , rcr
+
+                              if ( !referenceCardinalPoint ) {
+                                if ( referenceEvent )
+                                  rcr = getEventCoordinates(referenceEvent)
+                                else if ( referenceNode )
+                                  rcr = getBoundingClientRect(referenceNode)
+                                else if ( referenceOrigin )
+                                  rcr = { left: referenceOrigin.x, top: referenceOrigin.y }
+                                else
+                                  rcr = {left:0, top:0}
+
+                                return resolve( new Matrix(ncr, new Point(rcr.left, rcr.top)) )
+                              }
+
+                              return new BCR(referenceNode).compute(function(matrix){
+                                  resolve( new Matrix( ncr, matrix[referenceCardinalPoint]()) )
+                              })
+                          })
+                     })
+
+                  if ( this.__defaultMatrixHandler__ )
+                    output = output.then(this.__defaultMatrixHandler__)
+                  if ( matrixHandler )
+                    output = output.then(matrixHandler)
+
+                  return output
+              }
+          }
+      })
+
+
+    , Transition = ns.Transition = klass(function(Super, statics, cssProperties){
+          function defaultTransitionShim(){}
+
+          statics.CSS_TRANSITION_COMPAT = "getComputedStyle" in root  && "DOMStringMap" in root && "TransitionEvent" in root ? 0x1 : "WebKitTransitionEvent" in root ? 0x2 : 0
+          statics.CSS_TRANSITION_PROPERTY = statics.CSS_TRANSITION_COMPAT & 0x1 ? "transition" : statics.CSS_TRANSITION_COMPAT & 0x2 ? "-webkit-transition" : null
+          statics.CSS_TRANSITIONEND_EVENT = statics.CSS_TRANSITION_COMPAT & 0x1 ? "transitionend" : statics.CSS_TRANSITION_COMPAT & 0x2 ? "webkitTransitionEnd" : null
+          statics.COMPUTED_STYLE_COMPAT = "getComputedStyle" in root ? 0x1 : 0x0
+          statics.VISIBILITY_COMPAT = "hidden" in document ? 9
+                                    : "mozHidden" in document ? 5
+                                    : "msHidden" in document ? 3
+                                    : "webkitHidden" in document ? 1
+                                    : 0
+          statics.VISIBILITY_CHANGE_EVENT = function(c){ return c & 8 ? "visibilitychange" : c & 4 ? "mozvisibilitychange" : c & 2 ? "msvisibilitychange" : c & 1 ? "webkitvisibilitychange" : null }( statics.VISIBILITY_COMPAT )
+          statics.VISIBILITY_HIDDEN_PROPERTY = function(c){ return c & 8 ? "hidden" : c & 4 ? "mozHidden" : c & 2 ? "msHidden" : c & 1 ? "webkitHidden" : null }( statics.VISIBILITY_COMPAT )
+
+
+
+          statics.stylesheet = new StyleSheet("#sleipFX-css")
+
+          statics.guid = function( uuid ){
+              return function(){
+                  return invoke(uuid.uuid, [], uuid)
+              }
+          }( new Uuid({ length: 10, radix:16, map: { 0: "s", 1: "f", 2: "x", 3: "-" } }) )
+
+          cssProperties = statics.COMPUTED_STYLE_COMPAT ? root.getComputedStyle(document.createElement("div")) : document.documentElement.currentStyle
+
+          return {
+              constructor: function(){
+                  var args = slice(arguments)
+                    , transDict
+
+                  this.__guid__ = statics.guid()
+                  this.__defaultTransitionHandler__ = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : null
+
+                  transDict = args.length > 1 && args[args.length-1] && args[args.length-1].constructor === Object ? args.pop() : {}
+
+                  this.__properties__ = function(transition, aprops, rprops, k, aCssText, rCssText){
+                      rCssText = []
+
+                      for ( k in aprops ) if ( aprops.hasOwnProperty(k) )
+                        if ( (statics.COMPUTED_STYLE_COMPAT ? cssProperties.getPropertyValue(k) : cssProperties[k]) != void 0 ) {
+                          rprops.push(k)
+                          aCssText = [k]
+
+                          if ( typeof aprops[k] == "number" )
+                            aCssText.push( aprops[k].toString() + (transDict.timingUnit||"s") )
+                          else if ( typeof aprops[k] == "string" )
+                            aCssText.push( aprops[k].split(" ") )
+                          else if ( aprops[k] && aprops[k].constructor === Object ) {
+                              aCssText.push( aprops[k].duration||0 )
+
+                              if ( aprops[k].hasOwnProperty("timingFunction") )
+                                aCssText.push( aprops[k].timingFunction )
+
+                              if ( aprops[k].hasOwnProperty("delay") )
+                                aCssText.push( aprops[k].delay )
+                          }
+
+                          rCssText.push( aCssText.join(" ") )
+                        }
+
+                      transition.__cssRules__ = statics.stylesheet.rule("."+transition.__guid__, statics.CSS_TRANSITION_PROPERTY+":"+rCssText.join(", "))
+
+                      return rprops
+                  }( this, args.pop(), [] )
+              }
+            , animate: function(){
+                  if ( !statics.CSS_TRANSITION_COMPAT )
+                    return function(){
+
+                    }()
+
+                  var oargs = arguments
+                    , args = slice(arguments)
+                    , transitionHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : null
+
+                    , props = args[args.length-1] && args[args.length-1].constructor === Object ? args.pop() : {}
+                    , animating = [], events
+
+                    , node = args[0] && args[0].nodeType == 1 ? args.shift() : document.createElement("div")
+                    , transitionId = this.__guid__ + sleipnir.Uuid.uuid(6, 16)
+
+                    , output = (this.__transitions__ = this.__transitions__ || {})[transitionId] = new Promise(function(transition){
+                          return function(resolve, reject, k){
+                              if ( !contains(document.documentElement, node) || !node.parentNode || node.parentNode.nodeType != 1 )
+                                reject(new Error)
+
+                              node.dataset.sleipfxtransitionid = transitionId
+
+                              for ( k in props ) if ( props.hasOwnProperty(k) ) {
+                                if ( indexOf(transition.__properties__, k ) != -1 )
+                                  (function( k, prop, clone, computedStyles, cloneComputedStyles, curr, next ){
+                                        if ( cssProperties.getPropertyValue(k) == void 0 ) {
+                                            delete props[k]
+                                            return
+                                        }
+
+                                        curr = computedStyles.getPropertyValue(k)
+
+                                        clone.className.replace(" "+transition.__guid__, "")
+                                        node.parentNode.replaceChild(clone, node)
+                                        clone.style.setProperty(k, prop)
+                                        cloneComputedStyles = root.getComputedStyle(clone)
+
+                                        next = cloneComputedStyles.getPropertyValue(k)
+
+                                        if (  curr !== next )
+                                          animating.push(k)
+
+                                        clone.parentNode.replaceChild(node, clone)
+
+                                  }( k, props[k], node.cloneNode(true), root.getComputedStyle(node) ))
+                              }
+
+                              if ( !animating.length )
+                                resolve()
+                              else
+                                events = animating.length
+
+                              //forcing a browser redraw! & continue on the next tick after...
+                              node.appendChild(function(textnode){
+                                  setTimeout(function(){
+                                      node.removeChild(textnode)
+                                  }, 4)
+                                  return textnode
+                              }( document.createTextNode(" ") ))
+                              setTimeout(function(){
+
+                                  if ( node.className.indexOf(transition.__guid__) == -1 )
+                                    node.className += " "+transition.__guid__
+
+                                  //forcing a browser redraw! & continue on the next tick after... yep...
+                                  node.appendChild(function(textnode){
+                                      setTimeout(function(){
+                                          node.removeChild(textnode)
+                                      }, 4)
+                                      return textnode
+                                  }( document.createTextNode(" ") ))
+                                  setTimeout(function(){
+                                      function backtotab(){
+                                          end(true)
+                                      }
+
+                                      function end(retry, curr){
+                                          curr = node.dataset.sleipfxtransitionid
+
+                                          delete transition.__transitions__[transitionId]
+
+                                          if ( curr === transitionId ) {
+                                              node.className = node.className.replace(" "+transition.__guid__, "")
+                                              delete node.dataset.sleipfxtransitionid
+                                          }
+
+                                          if ( curr == transitionId )
+                                            setTimeout(function(){
+                                                if ( retry )
+                                                  invoke(transition.animate, [oargs[0], oargs[1]], transition).then(function(){
+                                                      resolve()
+                                                  }, function(){
+                                                      resolve() //resolve? todo: verify why... :D
+                                                  })
+                                                else
+                                                  resolve()
+                                            }, 4)
+                                          else
+                                            reject(new Error)
+                                      }
+
+                                      if ( statics.VISIBILITY_COMPAT & 1 )
+                                        addEventListener(document, statics.VISIBILITY_CHANGE_EVENT, function onvisibilitychange(){
+                                          removeEventListener(document, statics.VISIBILITY_CHANGE_EVENT, onvisibilitychange)
+                                          backtotab()
+                                        })
+
+                                      addEventListener(node, statics.CSS_TRANSITIONEND_EVENT, function ontransitionend(e){
+                                          if ( e.target !== node )
+                                            return
+
+                                          if ( e.target.dataset.sleipfxtransitionid == transitionId) {
+                                            if ( --events )
+                                              return
+
+                                            end()
+                                          }
+
+                                          removeEventListener(node, statics.CSS_TRANSITIONEND_EVENT, ontransitionend, true)
+                                      }, true)
+
+                                      for ( k in props ) if ( props.hasOwnProperty(k) )
+                                        node.style.setProperty(k, props[k])
+
+                                  }, 4)
+                              }, 4)
+
+                          }
+                      }( this ))
+
+                    if ( this.__defaultTransitionHandler__ )
+                      output = output.then(this.__defaultTransitionHandler__)
+                    if ( transitionHandler )
+                      output = output.then(transitionHandler)
+
+                    return output
+              }
+          }
+      })
+
+
     root.__sleipnir__ = ns
     root.sleipnir = function(k){
         function sleipnir(){
@@ -2207,4 +2397,4 @@
         return sleipnir
     }()
 
-}(window, { version: "ES3-0.6.2" }));
+}(window, { version: "ES3-0.6.3" }));
