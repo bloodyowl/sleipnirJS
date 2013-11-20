@@ -4,11 +4,68 @@
 
     var document = root.document
       , location = document.location
+      , navigator = root.navigator
 
         /* some const-like declarations */
       , STRICT_MODE = function(){
             return this === void 0
         }()
+
+      , BLOB_COMPAT = function(blob, url){
+            try {
+                blob = new Blob([""], { type: "text/plain" })
+                url = URL.createObjectURL(blob)
+
+                if ( "msClose" in blob )
+                  throw new Error
+            } catch(e){
+                return 0
+            }
+            return 1
+        }()
+      , COMPUTED_STYLE_COMPAT = "getComputedStyle" in root ? 0x1 : 0x0
+      , COOKIE_ENABLED = +navigator.cookieEnabled
+      , CSS_TRANSITION_COMPAT = "getComputedStyle" in root  && "DOMStringMap" in root && "TransitionEvent" in root ? 0x1 : "WebKitTransitionEvent" in root ? 0x2 : 0
+      , CSS_TRANSITION_PROPERTY = CSS_TRANSITION_COMPAT & 0x1 ? "transition" : CSS_TRANSITION_COMPAT & 0x2 ? "-webkit-transition" : null
+      , CSS_TRANSITIONEND_EVENT = CSS_TRANSITION_COMPAT & 0x1 ? "transitionend" : CSS_TRANSITION_COMPAT & 0x2 ? "webkitTransitionEnd" : null
+      , STYLESHEET_COMPAT = function(blob, node){
+            if ( blob )
+              return 5
+
+            try {
+                node = document.createElement("style")
+                node.textContent = node.innerText = ""
+                return 3
+            } catch(e){}
+
+            return 0
+        }( BLOB_COMPAT )
+      , TOP_DOMAIN = function(split, i, l, curr, hit){
+            function cookie(domain, cookiestr){
+                cookiestr = "__sleipTDT__=tdt"
+
+                document.cookie = cookiestr+";domain="+domain
+
+                if ( document.cookie.indexOf(cookiestr) != -1 ) {
+                    document.cookie = cookiestr+"; domain="+domain+"; expires=" + new Date( +(new Date) - 1000 ).toUTCString()
+                    return true
+                }
+
+                return false
+            }
+
+            i = split.length
+
+            while ( i-- )
+              if ( curr = "."+split.slice(i).join("."), hit = cookie(curr), hit )
+                return curr
+
+            return location.hostname
+        }( location.hostname.split(".") )
+      , VISIBILITY_COMPAT = "hidden" in document ? 9 : "mozHidden" in document ? 5 : "msHidden" in document ? 3 : "webkitHidden" in document ? 1 : 0
+      , VISIBILITY_CHANGE_EVENT = function(c){ return c & 8 ? "visibilitychange" : c & 4 ? "mozvisibilitychange" : c & 2 ? "msvisibilitychange" : c & 1 ? "webkitvisibilitychange" : null }( VISIBILITY_COMPAT )
+      , VISIBILITY_HIDDEN_PROPERTY = function(c){ return c & 8 ? "hidden" : c & 4 ? "mozHidden" : c & 2 ? "msHidden" : c & 1 ? "webkitHidden" : null }( VISIBILITY_COMPAT )
+      , XHR_COMPAT = "XMLHttpRequest" in root ? 1 : 0
 
       , ERROR = 1, INIT = 2
       , PENDING = 6, REJECTED = 10, RESOLVED = 18
@@ -16,6 +73,9 @@
       , risnative = /\s*\[native code\]\s*/i
       , rtrim = /^\s+|\s+$/g
       , rargs = /(?=^|\s*)function(?:[^\(]*)\(([^\)]*)/
+      , rip = /^(?:[\d.]*)$/
+      , rtemplatevars = /@(.*)@/g
+      , renclosingquotes = /^"|^'|"$|'$/g
 
         /* dom nodes */
       , docHead, docElt, docBody
@@ -122,7 +182,7 @@
 
 
       , invoke = ns.invoke = function(){
-            return function(/* fn, args, ctx */){
+            return function(){
                 var fn, args, ctx
 
                 fn = arguments[0] && typeof arguments[0].handleInvoke == "function" ? ( ctx = arguments[0], ctx.handleInvoke )
@@ -174,7 +234,7 @@
             }
         }()
 
-      , klass = ns.klass = function(/*SuperClass, prototype*/){
+      , klass = ns.klass = function(){
             if ( arguments.length > 2 )
               return function(args, A, b){
                   A = args.shift()
@@ -257,7 +317,7 @@
                       Class.__implements__.push(__trans_implements__[i])
                 }
 
-                return function(/*superclasses*/){
+                return function(){
                     var i = 0, l = arguments.length
 
                     for ( ; i < l; i++ )
@@ -454,7 +514,7 @@
 
 
       , EventEmitter = ns.EventEmitter = klass({
-            constructor: function(/*emitHandler*/){
+            constructor: function(){
                 var emitHandler = arguments[0] && (typeof arguments[0].handleInvoke == "function" || typeof arguments[0] == "function") ? arguments[0] : null
                   , emit = emitHandler && function(emitter){
                         return function(){
@@ -499,7 +559,7 @@
 
             }
 
-          , on: function(/*type, fn*/){
+          , on: function(){
                 if ( arguments.length == 1 && arguments[0].constructor === Object)
                   return function(ee, handlers, k){
                       for ( k in handlers ) if ( handlers.hasOwnProperty(k) )
@@ -521,7 +581,7 @@
                   events[type] = [handlers, handler]
 
             }
-          , once: function(/*type, fn*/){
+          , once: function(){
                 if ( arguments.length == 1 && arguments[0].constructor === Object )
                   return function(ee, handlers, k){
                       for ( k in handlers ) if ( handlers.hasOwnProperty(k) )
@@ -544,7 +604,7 @@
                     }
                 }(this))
             }
-          , off: function(/*type, fn*/){
+          , off: function(){
                 if ( arguments.length == 1 && arguments[0].constructor === Object )
                   return function(ee, handlers, k){
                       for ( k in handlers ) if ( handlers.hasOwnProperty(k) )
@@ -671,7 +731,7 @@
 
 
             return {
-                constructor: function(/*resolveHandler*/){
+                constructor: function(){
                     var resolveHandler = arguments[0] && (typeof arguments[0].handleInvoke == "function" || typeof arguments[0] == "function") ? arguments[0] : null
                       , resolve = resolveHandler && function(promise){
                             return function(){
@@ -693,7 +753,7 @@
                       invoke(resolveHandler, { $resolve: resolve, $reject: reject, $progress: progress, 0: resolve, 1: reject, 2: progress, length: 3 })
                 }
               , __promiseState__: PENDING
-              , then: function(/*resolveHandler, rejectHandler, progressHandler*/){
+              , then: function(){
                     var onresolve = arguments[0] && arguments[0].handleResolve && (typeof arguments[0].handleResolve.handleInvoke == "function" || typeof arguments[0].handleResolve == "function") ? arguments[0]
                                   : arguments[0] && (typeof arguments[0].handleInvoke == "function" || typeof arguments[0] == "function" ) ? arguments[0]
                                   : null
@@ -818,7 +878,7 @@
 
 
     , Iterator = ns.Iterator = klass({
-          constructor: function(/* range, opt_keys */){
+          constructor: function(){
               var opt_keys = !!arguments[1]
                 , keys = enumerate(arguments[0])
                 , i = 0, l = keys.length
@@ -848,7 +908,7 @@
           }
 
           return {
-              constructor: function(/*routes, dispatcher*/){
+              constructor: function(){
                   this.__routesDisptacher__ = typeof arguments[arguments.length-1] == "function" ? arguments[arguments.length-1] : null
 
                   if ( arguments[0] && arguments[0].constructor === Object )
@@ -1002,7 +1062,7 @@
                     this.setItem(arguments[0])
               }
             , __useSerializer__: Serializer
-            , setItem: function(/* key, value */){
+            , setItem: function(){
                   var key, value, hook, ov, added
 
                   if ( arguments.length == 1 )
@@ -1244,16 +1304,176 @@
           }
       })
 
-    , nodeExpression = ns.nodeExpression = function(){
-          var rvars = /@(.*)@/g
-            , renclosingquotes = /^"|^'|"$|'$/g
 
-            , operators = {
+    , Cookie = ns.Cookie = klass(Model, function(Super, statics, defaultLifespan){
+          defaultLifespan = 15552000000
+
+          return {
+              constructor: function(){
+                  var args = slice(arguments)
+                    , cookieHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : null
+                    , cookieDict = args[args.length-1] && args[args.length-1].constructor === Object ? args.pop() : ""
+                    , exist
+
+                  this.__cookieName__ = typeof args[args.length-1] == "string" ? args.shift() : toType(args.shift())
+                  this.__cookieLifespan__ = typeof cookieDict.maxAge == "number" ? cookieDict.maxAge : null
+                  this.__cookieSession__ = !!cookieDict.session
+
+                  this.__cookieDomain__ = typeof cookieDict.domain == "string" ? cookieDict.domain : TOP_DOMAIN
+                  this.__cookiePath__ = typeof cookieDict.path == "string" ? cookieDict.path : "/"
+                  this.__cookieExpiration__ = !!cookieDict.session ? ""
+                                            : !isNaN(+(new Date(cookieDict.expires))) ? new Date(cookieDict.expires).toUTCString()
+                                            : new Date( +(new Date) + this.__cookieLifespan__ ).toUTCString()
+
+                  if ( exist = document.cookie.match(name+"=([^;]*)"), exist )
+                    this.setItem(exist[1])
+
+
+                  if ( cookieHandler )
+                    ;(function(cookie){
+                          function set(){ return invoke(cookie.setItem, arguments, cookie) }
+                          function get(){ return invoke(cookie.getItem, arguments, cookie) }
+
+                          invoke(cookieHandler, { $set: set, $get: get, 0: set, 1: get, length: 2 })
+                    }( this ))
+
+              }
+            , sync: function(){
+                  document.cookie = [this.__cookieName__, "=", this.serialize(), "; domain=", this.__cookieDomain__, "; path=", this.__cookiePath__, "; expires =", this.__cookieExpriration__, ";"].join("")
+                  this.emit("sync")
+              }
+            , setItem: function(){
+                  invoke(Super.prototype.setItem, arguments, this)
+                  this.sync()
+              }
+            , removeItem: function(){
+                  invoke(Super.prototype.removeItem, arguments, this)
+                  this.sync()
+              }
+          }
+      })
+
+    , WebStore = ns.WebStore = klass(Model, function(Super, statics){
+
+          return {
+              constructor: function(){
+
+              }
+          }
+      })
+
+
+    , Service = ns.Service = klass(function(Super, statics){
+          statics.defaultRequestHandler = function(data){
+              return data
+          }
+
+          statics.isLocalService = function(a){
+              return function(url){
+                  a.href = url
+
+                  return a.domain === location.domain
+              }
+          }( document.createElement("a") )
+
+          return {
+              constructor: function(){
+                  var args = slice(arguments)
+                    , servDict
+
+                  this.__defaultRequestHandler__ = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : statics.defaultRequestHandler
+                  servDict = args[args.length-1] && args[args.length-1].constructor === Object ? args.pop() : { url: args.pop() }
+
+                  this.__serviceType__ = typeof servDict.type == "string" ? servDict.type : "GET"
+                  this.__serviceUrl__ = function(service, href){
+                      if ( servDict.xdomain || statics.isLocalService(href) )
+                        return href
+                      throw new Error() //todo
+                  }( this, typeof servDict.url == "string" ? servDict.url : toType(servDict.url) )
+
+                  this.__serviceSync__ = !!servDict.sync
+                  this.__serviceUser__ = typeof servDict.user == "string" ? servDict.user : null
+                  this.__servicePassword__ = typeof servDict.password == "string" ? servDict.password : null
+                  this.__serviceTimeout__ = typeof servDict.timeout == "number" ? servDict.timeout : 0
+                  this.__serviceRequestHeaders = servDict.headers && servDict.header.constructor === Object ? servDict.headers : {}
+                  this.__serviceOverrideMimeType__ = !!servDict.overrideMimeType
+                  this.__serviceResponseType__ = typeof servDict.responseType == "string" ? servDict.responseType : null
+              }
+            , request: function(){
+                  var args = slice(arguments)
+                    , requestHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : statics.defaultRequestHandler
+                    , requestBody = args[0] && typeof args[0].constructor.hasImplemented == "function" && ( args[0].constructor.hasImplemented(Model) || args[0].constructor.hasImplemented(Collection) ) ? args.shift().serialize()
+                                  : args.length == 2 && args[0] && args[0].constructor === Object ? Serializer.serialize(args.shift())
+                                  : null
+                    , requestHeaders = args[0] && args[0].constructor === Object ? args.shit() : {}
+                    , output = this.__ongoingxhrrequest__ = new Promise(function(service){
+                          return function(resolve, reject, request, k){
+
+                              request = XHR_COMPAT & 1 ? new XMLHttpRequest : new ActiveXObject("Microsoft.XMLHTTP")
+                              request.open(service.__serviceType__, service.__serviceUrl__, service.__sync__, service.__servuceUser__, service.__servicePassword__)
+                              request.timeout = service.__timeout__
+
+                              for ( k in service.__serviceRequestHeaders__ ) if ( service.__serviceRequestHeaders__.hasOwnProperty(k) )
+                                request.setRequestHeader(k, service.__serviceRequestHeaders__[k])
+
+                              for ( k in requestHeaders ) if ( requestHeaders.hasOwnProperty(k) )
+                                request.setRequestHeader(k, requestHeaders[k])
+
+                              if ( service.__serviceOverrideMimeType__ )
+                                request.overrideMimeType(service.__serviceOverrideMimeType__)
+
+                              request.onreadystatechange = function(){
+                                  if ( request.readyState < 4)
+                                    return
+
+                                  service.__ongoingxhrrequest__ = null
+
+                                  resolve({
+                                      status: request.status
+                                    , statusText: request.statusText
+                                    , response: request.response
+                                    , responseXML: request.responseXML
+                                    , responseText: request.responseText
+                                    , responseType: request.responseType
+                                  })
+                              }
+
+                              request.ontimeout = function(){
+                                  reject(new Error)
+                              }
+
+                              request.send(requestBody)
+                          }
+                      }( this ))
+
+                  if ( this.__defaultRequestHandler__ )
+                    output = output.then(this.__defaultRequestHandler__)
+
+                  if ( requestHandler )
+                    output = output.then(requestHandler)
+
+                  return output
+              }
+          }
+      })
+
+
+    , nodeExpression = ns.nodeExpression = function(){
+          var operators = {
                   "[^]": function type(stream, input, output){
                       var pile = input.pile
                         , node = pile === "text" ? document.createTextNode("") : document.createElement(pile||"div")
+                        , autoAssignAs
 
                       output.tree.appendChild(node)
+
+                      if ( node.tagName === "A" || node.tagName === "BUTTON" ) {
+                        output.assignAs = output.assignAs || []
+
+                        if ( indexOf(output.assignAs, pile) == -1 )
+                          output.assignAs.push(node.tagName.toLowerCase())
+                      }
+
                       input.context = node
                   }
                 , "[$]": null
@@ -1266,7 +1486,7 @@
                           var vars = []
                             , hit, onupdate
 
-                          while ( hit = rvars.exec(rawId), hit )
+                          while ( hit = rtemplatevars.exec(rawId), hit )
                             if ( indexOf(vars, hit) == -1 )
                               vars.push(hit)
 
@@ -1313,7 +1533,7 @@
                           var vars = []
                             , hit, onupdate
 
-                            while ( hit = rvars.exec(rawClassName), hit )
+                            while ( hit = rtemplatevars.exec(rawClassName), hit )
                               if ( indexOf(vars, hit) == -1 )
                                 vars.push(hit)
 
@@ -1361,7 +1581,7 @@
                           var vars = []
                             , hit, onupdate
 
-                          while ( hit = rvars.exec(rawValue), hit )
+                          while ( hit = rtemplatevars.exec(rawValue), hit )
                             if ( indexOf(vars, hit) == -1 )
                               vars.push(hit)
 
@@ -1400,6 +1620,13 @@
                             return
 
                           set(node, key, value, input.data)
+
+                          if ( "INPUT,BUTTON".indexOf(node.tagName) != -1 && (node.type == "submit"||node.value == "submit") ) {
+                            output.assignAs = output.assignAs || []
+
+                            if ( indexOf(output.assignAs, pile) == -1 )
+                              output.assignAs.push("submit")
+                          }
                       }
                   }()
                 , "}": null
@@ -1421,7 +1648,7 @@
                           var vars = []
                             , hit, onupdate
 
-                          while ( hit = rvars.exec(rawTextContent), hit )
+                          while ( hit = rtemplatevars.exec(rawTextContent), hit )
                             if ( indexOf(vars, hit) == -1 )
                               vars.push(hit)
 
@@ -1504,7 +1731,7 @@
               }
 
           return {
-              parse: function(/*expression, data*/){
+              parse: function(){
                   var args = slice(arguments)
                     , expression = typeof args[0] == "string" ? args.shift() : ""
                     , data = args[args.length-1] && typeof args[args.length-1].constructor.hasImplemented == "function"
@@ -1637,7 +1864,7 @@
               }
 
           return {
-              parse: function(/*expression, data*/){
+              parse: function(){
                   var args = slice(arguments)
                     , expression = typeof args[0] == "string" ? args.shift() : ""
                     , data = args[args.length-1] && typeof args[args.length-1].constructor.hasImplemented == "function"
@@ -1769,10 +1996,10 @@
       })
 
       , View = ns.View = klass(EventEmitter, {
-          constructor: function(/*template, data, viewHandler*/){
+          constructor: function(){
               var args = slice(arguments)
                 , parsedTemplate, k, i, l
-                , viewHandler
+                , viewHandler, domEvents
 
               viewHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function"||typeof args[args.length-1] == "function" ) ? args.pop() : null
 
@@ -1780,7 +2007,12 @@
                             && (args[args.length-1].constructor.hasImplemented(Model) || args[args.length-1].constructor.hasImplemented(Collection)) ? args.pop()
                             : args[args.length-1] && args[args.length-1].constructor === Object ? new this.__useModel__(args.pop())
                             : new this.__useModel__
-              this.__template__ = typeof args[0] == "string" ? trim(args.shift()) : ""
+              this.__template__ = typeof args[0] == "string" ? trim(args.shift())
+                                : args[0] && args[0].constructor === Object ? function(templateDict){
+                                      domEvents = templateDict.domEvents && templateDict.domEvents.constructor === Object ? templateDict.domEvents : null
+                                      return typeof templateDict.template == "string" ? templateDict.template : ""
+                                  }( args.shift() )
+                                : ""
 
               parsedTemplate = htmlExpression.parse(this.__template__, this.__data__)
 
@@ -1793,7 +2025,10 @@
                   this.__elements__.root.push(this.__fragment__.childNodes[i])
 
               if ( this.__defaultDOMEvents__ )
-                this.DOMEvent(this.__defaultDOMEvents__)
+                this.addDOMEventListener(this.__defaultDOMEvents__)
+
+              if ( domEvents )
+                this.addDOMEventListener(domEvents)
 
               if ( viewHandler )
                 (function(view){
@@ -1806,7 +2041,7 @@
                 }(this))
           }
         , __useModel__: Model
-        , useModel: function(/*M*/){
+        , useModel: function(){
               var M = arguments[0]
 
               if ( M && typeof M.hasImplemented == "function" && (M.hasImplemented(Model) || M.hasImplemented(Collection))  )
@@ -1831,28 +2066,22 @@
         , clone: function(){
               return new this.constructor(this.__template__, this.__data__)
           }
-        , element: function(/*ref*/){
-              var refs = arguments.length > 1 ? slice(arguments)
-                       : isArray(arguments[0]) ? arguments[0]
-                       : [arguments[0]]
-                , rv = [], i = 0, l = refs.length
-                , _ref, _nodes
+        , element: function(){
+              var args = slice(arguments)
+                , elementHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function" ) ? args.pop() : function(){}
+                , requested = args.length > 1 ? args
+                           : args.length == 1 ? [args.shift()]
+                           : ["root"]
+                , i = 0, l = requested.length
+                , elements = []
 
-              for ( ; i < l; i++ ) {
-                _ref = typeof refs[i] == "string" ? refs[i] : toType(refs[i])
-                _nodes = this.__elements__[_ref]
+              for ( ; i < l; i++ )
+                  requested[i] = typeof requested[i] == "string" ? requested[i] : toType(requested[i]),
+                  elements[i] = this.__elements__.hasOwnProperty(requested[i]) ? this.__elements__[requested[i]] : null
 
-                if ( _nodes && _nodes.length == 1 )
-                  rv[i] = _nodes[0]
-                else if ( _nodes )
-                  rv[i] = _nodes
-                else
-                  rv[i] = null
-              }
-
-              return rv
+              invoke(elementHandler, elements.length>1?elements:elements[0])
           }
-        , DOMEvent: function(/*eltRef, event, handler, capture*/){
+        , addDOMEventListener: function(){
               var eltRef, elts, event, handler, capture, i, l
 
               if ( arguments.length <= 2 && arguments[0].constructor == Object )
@@ -1860,7 +2089,7 @@
                     for ( k in events ) if ( events.hasOwnProperty(k) )
                       (function(eltRef, events, k){
                           for ( k in events ) if ( events.hasOwnProperty(k) )
-                            view.DOMEvent(eltRef, k, events[k], !!capture)
+                            view.addDOMEventListener(eltRef, k, events[k], !!capture)
                       }(k, events[k]))
                 }(this, arguments[0], arguments[1])
 
@@ -1876,32 +2105,6 @@
 
 
     , StyleSheet = ns.StyleSheet = klass(Promise, function(Super, statics){
-          statics.BLOB_COMPAT = function(blob, url){
-              try {
-                  blob = new Blob([""], { type: "text/plain" })
-                  url = URL.createObjectURL(blob)
-
-                  if ( "msClose" in blob )
-                    throw new Error
-              } catch(e){
-                  return 0
-              }
-              return 1
-          }()
-
-          statics.mode = function(blob, node){
-              if ( blob )
-                return 5
-
-              try {
-                  node = document.createElement("style")
-                  node.textContent = node.innerText = ""
-                  return 3
-              } catch(e){}
-
-              return 0
-          }( statics.BLOB_COMPAT )
-
           statics.isLocalCSSFile = function(a){
               return function(url){
                   a.href = url
@@ -1931,8 +2134,8 @@
                                 nodes.head.appendChild(node)
                             })
 
-                          } else if ( statics.mode & 1 ) {
-                            if ( statics.mode & 4 )
+                          } else if ( STYLESHEET_COMPAT & 1 ) {
+                            if ( STYLESHEET_COMPAT & 4 )
                               blob = new Blob([""], {type: "text/css"}),
                               url = URL.createObjectURL(blob),
                               node = nodeExpression.parse("link"+_node+"[rel=stylesheet][href=@url@]", {url: url}).tree.childNodes[0]
@@ -2011,7 +2214,7 @@
                           sheet.__stylesheetReady__.then(function(){
                               var idx = (sheet.__sheet__.cssRules||sheet.__sheet__.rules).length||0
 
-                              if ( statics.mode & 1 )
+                              if ( STYLESHEET_COMPAT & 1 )
                                 invoke(sheet.__sheet__.insertRule, [selector+cssText, idx], sheet.__sheet__)
                               else
                                 invoke(sheet.__sheet__.addRule, [selector, cssText, idx], sheet.__sheet__)
@@ -2174,20 +2377,6 @@
     , Transition = ns.Transition = klass(function(Super, statics, cssProperties){
           function defaultTransitionShim(){}
 
-          statics.CSS_TRANSITION_COMPAT = "getComputedStyle" in root  && "DOMStringMap" in root && "TransitionEvent" in root ? 0x1 : "WebKitTransitionEvent" in root ? 0x2 : 0
-          statics.CSS_TRANSITION_PROPERTY = statics.CSS_TRANSITION_COMPAT & 0x1 ? "transition" : statics.CSS_TRANSITION_COMPAT & 0x2 ? "-webkit-transition" : null
-          statics.CSS_TRANSITIONEND_EVENT = statics.CSS_TRANSITION_COMPAT & 0x1 ? "transitionend" : statics.CSS_TRANSITION_COMPAT & 0x2 ? "webkitTransitionEnd" : null
-          statics.COMPUTED_STYLE_COMPAT = "getComputedStyle" in root ? 0x1 : 0x0
-          statics.VISIBILITY_COMPAT = "hidden" in document ? 9
-                                    : "mozHidden" in document ? 5
-                                    : "msHidden" in document ? 3
-                                    : "webkitHidden" in document ? 1
-                                    : 0
-          statics.VISIBILITY_CHANGE_EVENT = function(c){ return c & 8 ? "visibilitychange" : c & 4 ? "mozvisibilitychange" : c & 2 ? "msvisibilitychange" : c & 1 ? "webkitvisibilitychange" : null }( statics.VISIBILITY_COMPAT )
-          statics.VISIBILITY_HIDDEN_PROPERTY = function(c){ return c & 8 ? "hidden" : c & 4 ? "mozHidden" : c & 2 ? "msHidden" : c & 1 ? "webkitHidden" : null }( statics.VISIBILITY_COMPAT )
-
-
-
           statics.stylesheet = new StyleSheet("#sleipFX-css")
 
           statics.guid = function( uuid ){
@@ -2196,7 +2385,7 @@
               }
           }( new Uuid({ length: 10, radix:16, map: { 0: "s", 1: "f", 2: "x", 3: "-" } }) )
 
-          cssProperties = statics.COMPUTED_STYLE_COMPAT ? root.getComputedStyle(document.createElement("div")) : document.documentElement.currentStyle
+          cssProperties = COMPUTED_STYLE_COMPAT ? root.getComputedStyle(document.createElement("div")) : document.documentElement.currentStyle
 
           return {
               constructor: function(){
@@ -2212,7 +2401,7 @@
                       rCssText = []
 
                       for ( k in aprops ) if ( aprops.hasOwnProperty(k) )
-                        if ( (statics.COMPUTED_STYLE_COMPAT ? cssProperties.getPropertyValue(k) : cssProperties[k]) != void 0 ) {
+                        if ( (COMPUTED_STYLE_COMPAT ? cssProperties.getPropertyValue(k) : cssProperties[k]) != void 0 ) {
                           rprops.push(k)
                           aCssText = [k]
 
@@ -2233,13 +2422,13 @@
                           rCssText.push( aCssText.join(" ") )
                         }
 
-                      transition.__cssRules__ = statics.stylesheet.rule("."+transition.__guid__, statics.CSS_TRANSITION_PROPERTY+":"+rCssText.join(", "))
+                      transition.__cssRules__ = statics.stylesheet.rule("."+transition.__guid__, CSS_TRANSITION_PROPERTY+":"+rCssText.join(", "))
 
                       return rprops
                   }( this, args.pop(), [] )
               }
             , animate: function(){
-                  if ( !statics.CSS_TRANSITION_COMPAT )
+                  if ( !CSS_TRANSITION_COMPAT )
                     return function(){
 
                     }()
@@ -2288,8 +2477,6 @@
 
                               if ( !animating.length )
                                 resolve()
-                              else
-                                events = animating.length
 
                               //forcing a browser redraw! & continue on the next tick after...
                               node.appendChild(function(textnode){
@@ -2340,24 +2527,27 @@
                                             reject(new Error)
                                       }
 
-                                      if ( statics.VISIBILITY_COMPAT & 1 )
-                                        addEventListener(document, statics.VISIBILITY_CHANGE_EVENT, function onvisibilitychange(){
-                                          removeEventListener(document, statics.VISIBILITY_CHANGE_EVENT, onvisibilitychange)
+                                      if ( VISIBILITY_COMPAT & 1 )
+                                        addEventListener(document, VISIBILITY_CHANGE_EVENT, function onvisibilitychange(){
+                                          removeEventListener(document, VISIBILITY_CHANGE_EVENT, onvisibilitychange)
                                           backtotab()
                                         })
 
-                                      addEventListener(node, statics.CSS_TRANSITIONEND_EVENT, function ontransitionend(e){
+                                      addEventListener(node, CSS_TRANSITIONEND_EVENT, function ontransitionend(e, idx){
+                                          idx = indexOf(animating, e.propertyName)
+
                                           if ( e.target !== node )
                                             return
 
                                           if ( e.target.dataset.sleipfxtransitionid == transitionId) {
-                                            if ( --events )
-                                              return
+                                            if ( idx != -1 )
+                                              animating.splice(idx, idx+1)
 
-                                            end()
+                                            if ( !animating.length )
+                                              end()
                                           }
 
-                                          removeEventListener(node, statics.CSS_TRANSITIONEND_EVENT, ontransitionend, true)
+                                          removeEventListener(node, CSS_TRANSITIONEND_EVENT, ontransitionend, true)
                                       }, true)
 
                                       for ( k in props ) if ( props.hasOwnProperty(k) )
@@ -2397,4 +2587,4 @@
         return sleipnir
     }()
 
-}(window, { version: "ES3-0.6.a03" }));
+}(window, { version: "ES3-0.6.a04" }));
