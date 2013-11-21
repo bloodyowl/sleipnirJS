@@ -1,4 +1,13 @@
-// variables to preserve : $super, $static, $e, $resolve, $reject, $progress, $, $$, $next, $route
+/*
+    Copyright © 2013 Benjamin Moulin <hello@grid23.net>
+    This work is free. You can redistribute it and/or modify it under the
+    terms of the Do What The Fuck You Want To Public License, Version 2,
+    as published by Sam Hocevar. See the COPYING file for more details.
+*/
+
+/*
+ variables to preserve : $super, $static, $e, $resolve, $reject, $progress, $, $$, $next, $route
+*/
 
 ;(function(root, ns){ "use strict"
 
@@ -903,9 +912,48 @@
 
 
     , Router = ns.Router = klass(function(Super, statics){
-          statics.defaultDispatcher = function(r, c){
-              return r === c
-          }
+          statics.defaultDispatcher = function(cache){
+              function getResponse(str, regexp, assignments, split, i, l){
+                  if ( !cache.hasOwnProperty(str) )
+                    if ( str.indexOf(":") == -1 )
+                      cache[str] = new RegExp(str)
+                    else {
+                      assignments = []
+                      regexp = []
+                      split = str.split("/")
+                      i = 0
+                      l = split.length
+
+                      for ( ; i < l; i++ )
+                        if ( split[i][0] === ":" )
+                          assignments.push(split[i].slice(1)),
+                          regexp.push("([^\\\/]*)")
+                        else
+                          regexp.push(split[i])
+
+                      cache[str] = new RegExp(regexp.join("\\\/"))
+
+                      if ( assignments.length )
+                        cache[str].assignments = assignments
+                    }
+
+                  return cache[str]
+              }
+
+              return function(route, path, match, res, i, l){
+                  match = path.match( getResponse(route) )
+
+                  if ( !match )
+                    return false
+
+                  if ( match.length == 1 )
+                    return true
+
+                  for ( res = {}; i < l; i++ )
+                    res[assignements[i]] = match[i+1]
+                  return res
+              }
+          }( {} )
 
           return {
               constructor: function(){
@@ -969,8 +1017,8 @@
                   var route = arguments[0]
                     , args = slice(arguments, 1)
                     , iterator = new Iterator(this.__routes__)
-                    , _next
-                    , invoker = new Invoker({ $route: route, $next: function(router){
+                    , _next, _hit
+                    , invoker = new Invoker({ $req: route, $res: _hit, $next: function(router){
                           return function(){
                               invoke(_next, [], router)
                           }
@@ -985,7 +1033,7 @@
                               if ( !isArray(handler) ) {
                                 hits++
                                 _next = next
-                                rv = invoker.invoke(handler.handleRoute||handler, [].concat(args).concat(_next), handler.handleRoute?handler:null) || rv
+                                rv = invoker.invoke(handler.handleRoute||handler, [].concat([_next, _hit, args]), handler.handleRoute?handler:null) || rv
 
                                 return typeof rv == "undefined" ? hits : rv
                               } else {
@@ -998,7 +1046,7 @@
                                       if ( ++i >= l )
                                         _next = next
 
-                                      rv = invoker.invoke(handler[i].handleRoute||handler[i], [].concat(args).concat(_next), self, handler.handleRoute?handler[i]:null) || rv
+                                      rv = invoker.invoke(handler[i].handleRoute||handler[i], [].concat([_next, _hit, args]), self, handler.handleRoute?handler[i]:null) || rv
 
                                       return typeof rv == "undefined" ? hits : rv
                                   }
@@ -1010,15 +1058,14 @@
                     , next = function(router){
                           return function(){
                               var ite = iterator.next()
-                                , hit
 
                               if ( ite === null )
                                 return hits
 
-                              hit = ite[0] === "*" ? true
-                                  : invoke( router.__routesDispatcher__||statics.defaultDispatcher, [ite[0], route].concat(args), router )
+                              _hit = ite[0] === "*" ? true
+                                  : invoke( router.__routesDispatcher__||statics.defaultDispatcher, [ite[0], route, args], router )
 
-                              if ( !hit )
+                              if ( !_hit )
                                 return next()
                               return handle(ite)
                           }
@@ -1885,7 +1932,6 @@
           return function(node, events, eventHandler, capture){
               var events = events.split(" ")
                 , i = 0, l = events.length
-                , _hooked
 
               for ( ; i < l; i++ ) {
 
@@ -2375,7 +2421,12 @@
 
 
     , Transition = ns.Transition = klass(function(Super, statics, cssProperties){
-          function defaultTransitionShim(){}
+          function defaultTransitionShim(node, props, resolve, k){
+              for ( k in props ) if ( props.hasOwnProperty(k) )
+                node.style.setProperty(k, props[k])
+
+              resolve()
+          }
 
           statics.stylesheet = new StyleSheet("#sleipFX-css")
 
@@ -2428,11 +2479,6 @@
                   }( this, args.pop(), [] )
               }
             , animate: function(){
-                  if ( !CSS_TRANSITION_COMPAT )
-                    return function(){
-
-                    }()
-
                   var oargs = arguments
                     , args = slice(arguments)
                     , transitionHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : null
@@ -2442,141 +2488,148 @@
 
                     , node = args[0] && args[0].nodeType == 1 ? args.shift() : document.createElement("div")
                     , transitionId = this.__guid__ + sleipnir.Uuid.uuid(6, 16)
+                    , output
 
-                    , output = (this.__transitions__ = this.__transitions__ || {})[transitionId] = new Promise(function(transition){
-                          return function(resolve, reject, k){
-                              if ( !contains(document.documentElement, node) || !node.parentNode || node.parentNode.nodeType != 1 )
-                                reject(new Error)
+                  if ( !CSS_TRANSITION_COMPAT )
+                    output = new Promise(function(transition, transitionShim){
+                        return function(resolve, reject){
+                            invoke(transitionShim__||defaultTransitionShim, { $resolve: resolve, $reject: reject, 0: node, 1: props, 2: resolve, 3: reject, length: 4 })
+                        }
+                    }( this, this.__animationShim__ ))
+                  else
+                    output = (this.__transitions__ = this.__transitions__ || {})[transitionId] = new Promise(function(transition){
+                        return function(resolve, reject, k){
+                            if ( !contains(document.documentElement, node) || !node.parentNode || node.parentNode.nodeType != 1 )
+                              reject(new Error)
 
-                              node.dataset.sleipfxtransitionid = transitionId
+                            node.dataset.sleipfxtransitionid = transitionId
 
-                              for ( k in props ) if ( props.hasOwnProperty(k) ) {
-                                if ( indexOf(transition.__properties__, k ) != -1 )
-                                  (function( k, prop, clone, computedStyles, cloneComputedStyles, curr, next ){
-                                        if ( cssProperties.getPropertyValue(k) == void 0 ) {
-                                            delete props[k]
-                                            return
+                            for ( k in props ) if ( props.hasOwnProperty(k) ) {
+                              if ( indexOf(transition.__properties__, k ) != -1 )
+                                (function( k, prop, clone, computedStyles, cloneComputedStyles, curr, next ){
+                                      if ( cssProperties.getPropertyValue(k) == void 0 ) {
+                                          delete props[k]
+                                          return
+                                      }
+
+                                      curr = computedStyles.getPropertyValue(k)
+
+                                      clone.className.replace(" "+transition.__guid__, "")
+                                      node.parentNode.replaceChild(clone, node)
+                                      clone.style.setProperty(k, prop)
+                                      cloneComputedStyles = root.getComputedStyle(clone)
+
+                                      next = cloneComputedStyles.getPropertyValue(k)
+
+                                      if (  curr !== next )
+                                        animating.push(k)
+
+                                      clone.parentNode.replaceChild(node, clone)
+
+                                }( k, props[k], node.cloneNode(true), root.getComputedStyle(node) ))
+                            }
+
+                            if ( !animating.length )
+                              resolve()
+
+                            //forcing a browser redraw! & continue on the next tick after...
+                            node.appendChild(function(textnode){
+                                setTimeout(function(){
+                                    node.removeChild(textnode)
+                                }, 4)
+                                return textnode
+                            }( document.createTextNode(" ") ))
+                            setTimeout(function(){
+
+                                if ( node.className.indexOf(transition.__guid__) == -1 )
+                                  node.className += " "+transition.__guid__
+
+                                //forcing a browser redraw! & continue on the next tick after... yep...
+                                node.appendChild(function(textnode){
+                                    setTimeout(function(){
+                                        node.removeChild(textnode)
+                                    }, 4)
+                                    return textnode
+                                }( document.createTextNode(" ") ))
+                                setTimeout(function(){
+                                    function backtotab(){
+                                        end(true)
+                                    }
+
+                                    function end(retry, curr){
+                                        curr = node.dataset.sleipfxtransitionid
+
+                                        delete transition.__transitions__[transitionId]
+
+                                        if ( curr === transitionId ) {
+                                            node.className = node.className.replace(" "+transition.__guid__, "")
+                                            delete node.dataset.sleipfxtransitionid
                                         }
 
-                                        curr = computedStyles.getPropertyValue(k)
+                                        if ( curr == transitionId )
+                                          setTimeout(function(){
+                                              if ( retry )
+                                                invoke(transition.animate, [oargs[0], oargs[1]], transition).then(function(){
+                                                    resolve()
+                                                }, function(){
+                                                    resolve() //resolve? todo: verify why... :D
+                                                })
+                                              else
+                                                resolve()
+                                          }, 4)
+                                        else
+                                          reject(new Error)
+                                    }
 
-                                        clone.className.replace(" "+transition.__guid__, "")
-                                        node.parentNode.replaceChild(clone, node)
-                                        clone.style.setProperty(k, prop)
-                                        cloneComputedStyles = root.getComputedStyle(clone)
+                                    if ( VISIBILITY_COMPAT & 1 )
+                                      addEventListener(document, VISIBILITY_CHANGE_EVENT, function onvisibilitychange(){
+                                        removeEventListener(document, VISIBILITY_CHANGE_EVENT, onvisibilitychange)
+                                        backtotab()
+                                      })
 
-                                        next = cloneComputedStyles.getPropertyValue(k)
+                                    addEventListener(node, CSS_TRANSITIONEND_EVENT, function ontransitionend(e, idx){
+                                        idx = indexOf(animating, e.propertyName)
 
-                                        if (  curr !== next )
-                                          animating.push(k)
+                                        if ( e.target !== node )
+                                          return
 
-                                        clone.parentNode.replaceChild(node, clone)
+                                        if ( e.target.dataset.sleipfxtransitionid == transitionId) {
+                                          if ( idx != -1 )
+                                            animating.splice(idx, idx+1)
 
-                                  }( k, props[k], node.cloneNode(true), root.getComputedStyle(node) ))
-                              }
+                                          if ( !animating.length )
+                                            end()
+                                        }
 
-                              if ( !animating.length )
-                                resolve()
+                                        removeEventListener(node, CSS_TRANSITIONEND_EVENT, ontransitionend, true)
+                                    }, true)
 
-                              //forcing a browser redraw! & continue on the next tick after...
-                              node.appendChild(function(textnode){
-                                  setTimeout(function(){
-                                      node.removeChild(textnode)
-                                  }, 4)
-                                  return textnode
-                              }( document.createTextNode(" ") ))
-                              setTimeout(function(){
+                                    for ( k in props ) if ( props.hasOwnProperty(k) )
+                                      node.style.setProperty(k, props[k])
 
-                                  if ( node.className.indexOf(transition.__guid__) == -1 )
-                                    node.className += " "+transition.__guid__
+                                }, 4)
+                            }, 4)
 
-                                  //forcing a browser redraw! & continue on the next tick after... yep...
-                                  node.appendChild(function(textnode){
-                                      setTimeout(function(){
-                                          node.removeChild(textnode)
-                                      }, 4)
-                                      return textnode
-                                  }( document.createTextNode(" ") ))
-                                  setTimeout(function(){
-                                      function backtotab(){
-                                          end(true)
-                                      }
+                        }
+                    }( this ))
 
-                                      function end(retry, curr){
-                                          curr = node.dataset.sleipfxtransitionid
+                  if ( this.__defaultTransitionHandler__ )
+                    output = output.then(this.__defaultTransitionHandler__)
+                  if ( transitionHandler )
+                    output = output.then(transitionHandler)
 
-                                          delete transition.__transitions__[transitionId]
-
-                                          if ( curr === transitionId ) {
-                                              node.className = node.className.replace(" "+transition.__guid__, "")
-                                              delete node.dataset.sleipfxtransitionid
-                                          }
-
-                                          if ( curr == transitionId )
-                                            setTimeout(function(){
-                                                if ( retry )
-                                                  invoke(transition.animate, [oargs[0], oargs[1]], transition).then(function(){
-                                                      resolve()
-                                                  }, function(){
-                                                      resolve() //resolve? todo: verify why... :D
-                                                  })
-                                                else
-                                                  resolve()
-                                            }, 4)
-                                          else
-                                            reject(new Error)
-                                      }
-
-                                      if ( VISIBILITY_COMPAT & 1 )
-                                        addEventListener(document, VISIBILITY_CHANGE_EVENT, function onvisibilitychange(){
-                                          removeEventListener(document, VISIBILITY_CHANGE_EVENT, onvisibilitychange)
-                                          backtotab()
-                                        })
-
-                                      addEventListener(node, CSS_TRANSITIONEND_EVENT, function ontransitionend(e, idx){
-                                          idx = indexOf(animating, e.propertyName)
-
-                                          if ( e.target !== node )
-                                            return
-
-                                          if ( e.target.dataset.sleipfxtransitionid == transitionId) {
-                                            if ( idx != -1 )
-                                              animating.splice(idx, idx+1)
-
-                                            if ( !animating.length )
-                                              end()
-                                          }
-
-                                          removeEventListener(node, CSS_TRANSITIONEND_EVENT, ontransitionend, true)
-                                      }, true)
-
-                                      for ( k in props ) if ( props.hasOwnProperty(k) )
-                                        node.style.setProperty(k, props[k])
-
-                                  }, 4)
-                              }, 4)
-
-                          }
-                      }( this ))
-
-                    if ( this.__defaultTransitionHandler__ )
-                      output = output.then(this.__defaultTransitionHandler__)
-                    if ( transitionHandler )
-                      output = output.then(transitionHandler)
-
-                    return output
+                  return output
               }
           }
       })
 
 
-    root.__sleipnir__ = ns
-    root.sleipnir = function(k){
+    root.__sleipnir__ = function(k){
         function sleipnir(){
             if ( arguments[0] && (typeof arguments[0].handleInvoke == "function" || typeof arguments[0] == "function") )
             return domReady.then(function(fn){
                 return function(nodes){
-                    return invoke(fn, { $: sleipnir, $$: sleipnir.dom, 0: nodes, length: 1 })
+                    return invoke(fn, { $: sleipnir, 0: nodes, length: 1 })
                 }
             }(arguments[0]))
         }
@@ -2587,4 +2640,9 @@
         return sleipnir
     }()
 
-}(window, { version: "ES3-0.6.a04" }));
+    if ( typeof root.define == "function" && define.amd )
+      define(function(){ return __sleipnir__ })
+    else
+      root.sleipnir = __sleipnir__
+
+}(window, { version: "ES3-0.6.a05" }));

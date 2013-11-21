@@ -1,0 +1,9 @@
+{
+    "name" : "sleipnirJS"
+  , "version": "0.6.0"
+
+  , "repository": { "type": "git", "url": "https://github.com/grid23/sleipnirJS.git" }
+  
+  , "authors": ["Benjamin Moulin"]
+  , "licence": "WTFPL2"
+}
