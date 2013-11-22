@@ -245,17 +245,18 @@
 
       , klass = ns.klass = function(){
             if ( arguments.length > 2 )
-              return function(args, A, b){
+              return function(args, proto, A, B, k){
                   A = args.shift()
-                  b = function(B, proto){
-                      proto = B.prototype
-                      proto.__trans_implements__ = [].concat(B.__implements__)
-
-                      return proto
-                  }( klass(args.shift(), {}) )
-
-                  return invoke(klass, [klass(A, b)].concat(args))
-              }( slice(arguments) )
+                  B = args.shift()
+                  
+                  for ( k in B.prototype ) if ( B.prototype[k] !== Object.prototype[k] )
+                    proto[k] = B.prototype[k]
+                  
+                  proto.__trans_implements__ = [].concat(B.__implements__)
+                  delete proto.constructor
+                  
+                  return invoke(klass, [klass(A, proto)].concat(args))
+              }( slice(arguments), {} )
 
             var SuperClass = arguments.length == 2 ? arguments[0] : null
               , superPrototype = SuperClass ? SuperClass.prototype : {}
@@ -1040,7 +1041,7 @@
                                       if ( ++i >= l )
                                         _next = next
 
-                                      rv = invoker.invoke(handler[i].handleRoute||handler[i], [].concat([_next, _hit, args]), self, handler.handleRoute?handler[i]:null) || rv
+                                      rv = invoker.invoke(handler[i].handleRoute||handler[i], [].concat([_next, _hit, args]), handler[i].handleRoute?handler[i]:null) || rv
 
                                       return typeof rv == "undefined" ? hits : rv
                                   }
@@ -1449,9 +1450,17 @@
                   var args = slice(arguments)
                     , requestHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : statics.defaultRequestHandler
                     , requestBody = args[0] && typeof args[0].constructor.hasImplemented == "function" && ( args[0].constructor.hasImplemented(Model) || args[0].constructor.hasImplemented(Collection) ) ? args.shift().serialize()
-                                  : args.length == 2 && args[0] && args[0].constructor === Object ? Serializer.serialize(args.shift())
+                                  : args[0] && args[0].constructor === Object ? Serializer.serialize(args.shift())
+                                  : typeof args[0] == "string" ? args.shift()
                                   : null
-                    , requestHeaders = args[0] && args[0].constructor === Object ? args.shit() : {}
+                    , requestUrl = this.__serviceType__ !== "GET" ? this.__serviceUrl__ : function(url){
+                          if ( requestBody )
+                            url = url+"?"+requestBody
+                          requestBody = null
+                          
+                          return url
+                      }( this.__serviceUrl__ )
+                    , requestHeaders = args[0] && args[0].constructor === Object ? args.shift() : {}
                     , output = new Promise(function(service){
                           return function(resolve, reject, request, k){
 
@@ -1460,8 +1469,8 @@
                               if ( service.__ongoingxhrrequest__ )
                                 service.__ongoingxhrrequest__.abort()
                               service.__ongoingxhrrequest__ = request
-
-                              request.open(service.__serviceType__, service.__serviceUrl__, service.__sync__, service.__servuceUser__, service.__servicePassword__)
+                                
+                              request.open(service.__serviceType__, requestUrl, !service.__sync__, service.__servuceUser__, service.__servicePassword__)
                               request.timeout = service.__timeout__
 
                               for ( k in service.__serviceRequestHeaders__ ) if ( service.__serviceRequestHeaders__.hasOwnProperty(k) )
@@ -2645,4 +2654,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.a06" }));
+}(window, { version: "ES3-0.6.a07" }));
