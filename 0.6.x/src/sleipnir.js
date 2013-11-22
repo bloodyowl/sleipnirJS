@@ -89,24 +89,24 @@
         /* dom nodes */
       , docHead, docElt, docBody
 
-      , toType = function(toString){
+      , toType = ns.toType = function(toString){
             return function(o){
                 return toString.call(o)
             }
         }( Object.prototype.toString )
 
-      , isNative = function(fn){
+      , isNative = ns.isNative = function(fn){
             if ( typeof fn == "function" )
               return fn.toString().match(risnative)
         }
 
-      , isArray = function(hasIsArray){
+      , isArray = ns.isArray = function(hasIsArray){
             return hasIsArray ? Array.isArray : function(o){
                 return toType(o) == "[object Array]"
             }
         }( isNative(Array.isArray) )
 
-      , slice = function(slice){
+      , slice = ns.slice = function(slice){
             return function(o, idx){
                 var rv, i, l
 
@@ -125,7 +125,7 @@
             }
         }( Array.prototype.slice )
 
-      , indexOf = function(hasIndexOf){
+      , indexOf = ns.indexOf = function(hasIndexOf){
             if ( hasIndexOf )
               return function(a, s){
                   return a.indexOf(s)
@@ -918,13 +918,7 @@
                     if ( str.indexOf(":") == -1 )
                       cache[str] = new RegExp(str)
                     else {
-                      assignments = []
-                      regexp = []
-                      split = str.split("/")
-                      i = 0
-                      l = split.length
-
-                      for ( ; i < l; i++ )
+                      for ( assignments = [], regexp = [], split = str.split("/"), i = 0, l = split.length; i < l; i++ )
                         if ( split[i][0] === ":" )
                           assignments.push(split[i].slice(1)),
                           regexp.push("([^\\\/]*)")
@@ -1018,7 +1012,7 @@
                     , args = slice(arguments, 1)
                     , iterator = new Iterator(this.__routes__)
                     , _next, _hit
-                    , invoker = new Invoker({ $req: route, $res: _hit, $next: function(router){
+                    , invoker = new Invoker({ $req: route, $res: _hit, $args: args, $next: function(router){
                           return function(){
                               invoke(_next, [], router)
                           }
@@ -1411,8 +1405,13 @@
 
 
     , Service = ns.Service = klass(function(Super, statics){
-          statics.defaultRequestHandler = function(data){
-              return data
+          statics.defaultRequestHandler = function(status, request){
+              return new Promise(function(resolve, reject){
+                  if ( status >= 400 )
+                    reject(status, request)
+                  else
+                    resolve(status, request)
+              })
           }
 
           statics.isLocalService = function(a){
@@ -1428,7 +1427,7 @@
                   var args = slice(arguments)
                     , servDict
 
-                  this.__defaultRequestHandler__ = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : statics.defaultRequestHandler
+                  this.__defaultRequestHandler__ = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : null
                   servDict = args[args.length-1] && args[args.length-1].constructor === Object ? args.pop() : { url: args.pop() }
 
                   this.__serviceType__ = typeof servDict.type == "string" ? servDict.type : "GET"
@@ -1453,10 +1452,15 @@
                                   : args.length == 2 && args[0] && args[0].constructor === Object ? Serializer.serialize(args.shift())
                                   : null
                     , requestHeaders = args[0] && args[0].constructor === Object ? args.shit() : {}
-                    , output = this.__ongoingxhrrequest__ = new Promise(function(service){
+                    , output = new Promise(function(service){
                           return function(resolve, reject, request, k){
 
                               request = XHR_COMPAT & 1 ? new XMLHttpRequest : new ActiveXObject("Microsoft.XMLHTTP")
+
+                              if ( service.__ongoingxhrrequest__ )
+                                service.__ongoingxhrrequest__.abort()
+                              service.__ongoingxhrrequest__ = request
+
                               request.open(service.__serviceType__, service.__serviceUrl__, service.__sync__, service.__servuceUser__, service.__servicePassword__)
                               request.timeout = service.__timeout__
 
@@ -1473,16 +1477,10 @@
                                   if ( request.readyState < 4)
                                     return
 
-                                  service.__ongoingxhrrequest__ = null
+                                  if ( service.__ongoingxhrrequest__ === request  )
+                                    service.__ongoingxhrrequest__ = null
 
-                                  resolve({
-                                      status: request.status
-                                    , statusText: request.statusText
-                                    , response: request.response
-                                    , responseXML: request.responseXML
-                                    , responseText: request.responseText
-                                    , responseType: request.responseType
-                                  })
+                                  resolve(request.status, request)
                               }
 
                               request.ontimeout = function(){
@@ -1493,8 +1491,7 @@
                           }
                       }( this ))
 
-                  if ( this.__defaultRequestHandler__ )
-                    output = output.then(this.__defaultRequestHandler__)
+                  output = output.then(this.__defaultRequestHandler__||statics.defaultRequestHandler)
 
                   if ( requestHandler )
                     output = output.then(requestHandler)
@@ -2583,8 +2580,11 @@
 
                                     if ( VISIBILITY_COMPAT & 1 )
                                       addEventListener(document, VISIBILITY_CHANGE_EVENT, function onvisibilitychange(){
-                                        removeEventListener(document, VISIBILITY_CHANGE_EVENT, onvisibilitychange)
-                                        backtotab()
+                                          if ( !document[VISIBILITY_HIDDEN_PROPERTY] )
+                                            return
+
+                                          removeEventListener(document, VISIBILITY_CHANGE_EVENT, onvisibilitychange)
+                                          backtotab()
                                       })
 
                                     addEventListener(node, CSS_TRANSITIONEND_EVENT, function ontransitionend(e, idx){
@@ -2645,4 +2645,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.a05" }));
+}(window, { version: "ES3-0.6.a06" }));
