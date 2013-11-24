@@ -242,105 +242,96 @@
                 return rv
             }
         }()
-
+      
       , klass = ns.klass = function(){
-            if ( arguments.length > 2 )
-              return function(args, proto, A, B, k){
-                  A = args.shift()
-                  B = args.shift()
-                  
-                  for ( k in B.prototype ) if ( B.prototype[k] !== Object.prototype[k] )
-                    proto[k] = B.prototype[k]
-                  
-                  proto.__trans_implements__ = [].concat(B.__implements__)
-                  delete proto.constructor
-                  
-                  return invoke(klass, [klass(A, proto)].concat(args))
-              }( slice(arguments), {} )
-
-            var SuperClass = arguments.length == 2 ? arguments[0] : null
-              , superPrototype = SuperClass ? SuperClass.prototype : {}
-              , statics = {}
-              , k, __trans_implements__
-
-              , prototype = function(props){
-                    return typeof props == "function" ? (invoke(props, { $Super: SuperClass, $static: statics, 0: SuperClass, 1: statics, length: 2 })||{})
-                           : toType(props) == "[object Object]" ? props
-                           : {}
-                }( arguments[arguments.length-1] )
-
-              , Class = prototype.hasOwnProperty("constructor") ? function(){
-                    var constructor = prototype.constructor
-                    delete prototype.constructor
-                    return constructor
-                }() : function(){}
-
+            var args = slice(arguments)
+              , Super = args.length == 2 ? args[0] : null
+              , statics = {}, k
+              , Class
+              , prototype = function(){
+                    if ( typeof args[args.length-1] == "function" ) {
+                      args[args.length-1] = invoke(args[args.length-1], { $Super: Super, $static: statics, 0: Super, 1: statics, length: 2 })
+                    }
+                    
+                    if ( typeof args[args.length-1].constructor == "function" ) {
+                        Class = args[args.length-1].constructor
+                        delete args[args.length-1].constructor
+                    }
+                    
+                    return invoke(mixin, args)
+                }()
+            
+            Class = Class || function(){}
+            Class.prototype = prototype
+            Class.prototype.constructor = Class
+            
+            for ( k in statics ) if ( statics.hasOwnProperty(k) )
+              Class[k] == statics[k]
+            
             Class.create = function(){
                 var args = arguments
                 function F(){
                     return invoke(Class, args, this)
                 }
                 F.prototype = Class.prototype
-
+                
                 return new F
             }
-
+            
             Class.extend = function(){
                 return invoke(klass, [Class].concat(slice(arguments)))
             }
-
-            Class.prototype = function(){
-                function P(){}
-                P.prototype = superPrototype
-                return new P
-            }()
-
-            for ( k in statics ) if ( statics.hasOwnProperty(k) )
-              Class[k] = statics[k]
-
-            if ( prototype.__trans_implements__ ) {
-              __trans_implements__ = prototype.__trans_implements__
-              delete prototype.__trans_implements__
+            
+            Class.isImplementedBy = function(){
+                var k, i = 0, l = arguments.length
+                  , prototype
+                
+                for ( ; i < l; i++ ) {
+                    prototype = typeof arguments[i] == "function" ? arguments[i].prototype
+                              : arguments[i] ? arguments[i] : {}
+                  
+                  for ( k in Class.prototype )
+                    if ( k != "constructor" && prototype[k] !== Class.prototype[k] )
+                      return false
+                }
+                
+                return true
             }
-
-            for ( k in prototype ) if ( prototype.hasOwnProperty(k) )
-              Class.prototype[k] = prototype[k]
-
-            Class.prototype.constructor = Class
-
-            Class.__implements__ = [Class]
-            Class.hasImplemented = function(){
-                var i, l
-
-                if ( SuperClass ) {
-                  Class.__implements__.push(SuperClass)
-
-                  if ( SuperClass.__implements__ )
-                    for ( i = 0, l = SuperClass.__implements__.length; i < l; i++ )
-                      if ( indexOf(Class.__implements__, SuperClass.__implements__[i]) == -1 )
-                        Class.__implements__.push(SuperClass.__implements__[i])
+            
+            Class.implementsOn = function(){
+                var k, i = 0, l = arguments.length
+                  , prototype
+                
+                for ( ; i < l; i++ ) {
+                    prototype = typeof arguments[i] == "function" ? arguments[i].prototype
+                              : arguments[i] ? arguments[i] : {}
+                    
+                    for ( k in Class.prototype ) if ( k !== "constructor" )
+                      prototype[k] = Class.prototype[k]
                 }
-
-                if ( __trans_implements__ ) {
-                  for ( i = 0, l = __trans_implements__.length; i < l; i++ )
-                    if ( indexOf(Class.__implements__, __trans_implements__[i]) == -1 )
-                      Class.__implements__.push(__trans_implements__[i])
-                }
-
-                return function(){
-                    var i = 0, l = arguments.length
-
-                    for ( ; i < l; i++ )
-                      if ( indexOf(Class.__implements__, arguments[i]) == -1 )
-                        return false
-
-                    return true
-                }
-            }()
-
+                
+            }
+            
             return Class
         }
-
+      , mixin = klass.mixin = function(){
+            var args = slice(arguments)
+              , k, i = 0, l = args.length
+              , prototype = {}
+              , superPrototype
+            
+            for ( ; i < l; i++ ) {
+                superPrototype = typeof args[i] == "function" ? args[i].prototype
+                      : args[i] ? args[i] : {}
+                
+                for ( k in superPrototype )
+                  if ( prototype[k] !== superPrototype[k] && superPrototype[k] !== Object.prototype[k] )
+                    prototype[k] = superPrototype[k]
+            }
+            
+            delete prototype.constructor
+            return prototype
+        }
       , singleton = ns.singleton = klass.singleton = function(){
             var F = invoke(klass, arguments)
               , G = klass(F, function(Super, statics){
@@ -555,7 +546,7 @@
                   if ( handlers.handleEvent )
                     invoker.invoke(handlers.handleEvent, args, handlers)
                   else if ( handlers.handleInvoke )
-                    invoke.invoke(handlers, args)
+                    invoker.invoke(handlers, args)
                   else if ( typeof handlers == "function" )
                     invoker.invoke(handlers, args, this)
                   else for ( _arr = [].concat(handlers), i = 0, l = _arr.length; i < l; i++ )
@@ -565,8 +556,6 @@
                       invoker.invoke(_arr[i], args)
                     else
                       invoker.invoke(_arr[i], args, this)
-
-
             }
 
           , on: function(){
@@ -589,7 +578,6 @@
                   handlers.push(handler)
                 else
                   events[type] = [handlers, handler]
-
             }
           , once: function(){
                 if ( arguments.length == 1 && arguments[0].constructor === Object )
@@ -892,7 +880,7 @@
               var opt_keys = !!arguments[1]
                 , keys = enumerate(arguments[0])
                 , i = 0, l = keys.length
-
+              
               this.__pointer__ = -1
               this.__range__ = []
 
@@ -1238,7 +1226,7 @@
             , useModel: function(){
                   var M = arguments[0]
 
-                  if ( M && typeof M.hasImplemented == "function" && M.hasImplemented(Model) )
+                  if ( Model.isImplementedBy(M) )
                     return this.__useModel__ = M, true
                   return false
               }
@@ -1258,7 +1246,7 @@
                       adds = [arguments[0]]
 
                   for ( i = 0, l = adds.length; i < l; i++ )
-                    if ( adds[i] && adds[i].constructor.hasImplemented && adds[i].constructor.hasImplemented(Model) ) {
+                    if ( Model.isImplementedBy(adds[i]) ) {
                       if ( indexOf( this.__models__, adds[i]) == -1 )
                         this.__models__.push(adds[i])
                     } else {
@@ -1277,7 +1265,7 @@
                           collection.removeModel(models[i])
                     }(this, slice(arguments))
 
-                  model = arguments[0] && typeof arguments[0].constructor.hasImplemented == "function" && arguments[0].constructor.hasImplemented(Model) ? arguments[0] : null
+                  model = arguments[0] && Model.isImplementedBy(arguments[0]) ? arguments[0] : null
 
                   if ( !model || (idx = indexOf((this.__models__ || []), model) == -1) )
                     return false
@@ -1449,7 +1437,7 @@
             , request: function(){
                   var args = slice(arguments)
                     , requestHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : statics.defaultRequestHandler
-                    , requestBody = args[0] && typeof args[0].constructor.hasImplemented == "function" && ( args[0].constructor.hasImplemented(Model) || args[0].constructor.hasImplemented(Collection) ) ? args.shift().serialize()
+                    , requestBody = args[0] && (Model.isImplementedBy(args[0])||Collection.isImplementedBy(args[0])) ? args.shift().serialize()
                                   : args[0] && args[0].constructor === Object ? Serializer.serialize(args.shift())
                                   : typeof args[0] == "string" ? args.shift()
                                   : null
@@ -1746,7 +1734,7 @@
               }
             , read = function(stream, input, output){
                   var next, operand
-
+                  
                   try {
                     next = stream.next()
                   } catch(e){
@@ -1787,8 +1775,7 @@
               parse: function(){
                   var args = slice(arguments)
                     , expression = typeof args[0] == "string" ? args.shift() : ""
-                    , data = args[args.length-1] && typeof args[args.length-1].constructor.hasImplemented == "function"
-                           && (args[args.length-1].constructor.hasImplemented(Model) || args[args.length-1].constructor.hasImplemented(Collection)) ? args.pop()
+                    , data = args[args.length-1] && (Model.isImplementedBy(args[args.length-1]) || Collection.isImplementedBy(args[args.length-1])) ? args.pop()
                            : args[args.length-1] && args[args.length-1].constructor === Object ? new Model(args.pop())
                            : new Model()
                     , stream
@@ -1799,7 +1786,7 @@
                   if ( expression[0] == "*" ) {
                       expression = expression.slice(1)
 
-                      if ( data.constructor.hasImplemented(Collection) ) {
+                      if ( Collection.isImplementedBy(data) ) {
                         models = data.find("*")
 
                         for ( i = 0, l = models.length; i < l; i++ ) {
@@ -1920,8 +1907,7 @@
               parse: function(){
                   var args = slice(arguments)
                     , expression = typeof args[0] == "string" ? args.shift() : ""
-                    , data = args[args.length-1] && typeof args[args.length-1].constructor.hasImplemented == "function"
-                           && (args[args.length-1].constructor.hasImplemented(Model) || args[args.length-1].constructor.hasImplemented(Collection)) ? args.pop()
+                    , data = args[args.length-1] && (Model.isImplementedBy(args[args.length-1])||Collection.isImplementedBy(args[args.length-1])) ? args.pop()
                            : args[args.length-1] && args[args.length-1].constructor === Object ? new Model(args.pop())
                            : new Model()
                     , stream = new Iterator(expression)
@@ -2055,8 +2041,7 @@
 
               viewHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function"||typeof args[args.length-1] == "function" ) ? args.pop() : null
 
-              this.__data__ = args[args.length-1] && typeof args[args.length-1].constructor.hasImplemented == "function"
-                            && (args[args.length-1].constructor.hasImplemented(Model) || args[args.length-1].constructor.hasImplemented(Collection)) ? args.pop()
+              this.__data__ = args[args.length-1] && (Model.isImplementedBy(args[args.length-1])||Collection.isImplementedBy(args[args.length-1])) ? args.pop()
                             : args[args.length-1] && args[args.length-1].constructor === Object ? new this.__useModel__(args.pop())
                             : new this.__useModel__
               this.__template__ = typeof args[0] == "string" ? trim(args.shift())
@@ -2096,7 +2081,7 @@
         , useModel: function(){
               var M = arguments[0]
 
-              if ( M && typeof M.hasImplemented == "function" && (M.hasImplemented(Model) || M.hasImplemented(Collection))  )
+              if ( M && (Model.isImplementedBy(M)||Collection.isImplementedBy(M)) )
                 return this.__useModel__ = M, true
               return false
           }
@@ -2654,4 +2639,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.a07" }));
+}(window, { version: "ES3-0.6.a08" }));
