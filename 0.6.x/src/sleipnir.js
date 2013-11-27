@@ -14,13 +14,13 @@
     var document = root.document
       , location = document.location
       , navigator = root.navigator
-
+      , CONST = ns.CONST = {}
         /* some const-like declarations */
-      , STRICT_MODE = function(){
+      , STRICT_MODE = CONST.STRICT_MODE = function(){
             return this === void 0
         }()
 
-      , BLOB_COMPAT = function(blob, url){
+      , BLOB_COMPAT = CONST.BLOB_COMPAT = function(blob, url){
             try {
                 blob = new Blob([""], { type: "text/plain" })
                 url = URL.createObjectURL(blob)
@@ -32,12 +32,12 @@
             }
             return 1
         }()
-      , COMPUTED_STYLE_COMPAT = "getComputedStyle" in root ? 0x1 : 0x0
-      , COOKIE_ENABLED = +navigator.cookieEnabled
-      , CSS_TRANSITION_COMPAT = "getComputedStyle" in root  && "DOMStringMap" in root && "TransitionEvent" in root ? 0x1 : "WebKitTransitionEvent" in root ? 0x2 : 0
-      , CSS_TRANSITION_PROPERTY = CSS_TRANSITION_COMPAT & 0x1 ? "transition" : CSS_TRANSITION_COMPAT & 0x2 ? "-webkit-transition" : null
-      , CSS_TRANSITIONEND_EVENT = CSS_TRANSITION_COMPAT & 0x1 ? "transitionend" : CSS_TRANSITION_COMPAT & 0x2 ? "webkitTransitionEnd" : null
-      , STYLESHEET_COMPAT = function(blob, node){
+      , COMPUTED_STYLE_COMPAT = CONST.COMPUTED_STYLE_COMPAT = "getComputedStyle" in root ? 0x1 : 0x0
+      , COOKIE_ENABLED = CONST.COOKIE_ENABLED = +navigator.cookieEnabled
+      , CSS_TRANSITION_COMPAT = CONST.CSS_TRANSITION_COMPAT = "getComputedStyle" in root  && "DOMStringMap" in root && "TransitionEvent" in root ? 0x1 : "WebKitTransitionEvent" in root ? 0x2 : 0
+      , CSS_TRANSITION_PROPERTY = CONST.CSS_TRANSITION_PROPERTY = CSS_TRANSITION_COMPAT & 0x1 ? "transition" : CSS_TRANSITION_COMPAT & 0x2 ? "-webkit-transition" : null
+      , CSS_TRANSITIONEND_EVENT = CONST.CSS_TRANSITIONEND_EVENT = CSS_TRANSITION_COMPAT & 0x1 ? "transitionend" : CSS_TRANSITION_COMPAT & 0x2 ? "webkitTransitionEnd" : null
+      , STYLESHEET_COMPAT = CONST.STYLESHEET_COMPAT = function(blob, node){
             if ( blob )
               return 5
 
@@ -49,7 +49,7 @@
 
             return 0
         }( BLOB_COMPAT )
-      , TOP_DOMAIN = function(split, i, l, curr, hit){
+      , TOP_DOMAIN = CONST.TOP_DOMAIN = function(split, i, l, curr, hit){
             function cookie(domain, cookiestr){
                 cookiestr = "__sleipTDT__=tdt"
 
@@ -71,13 +71,13 @@
 
             return location.hostname
         }( location.hostname.split(".") )
-      , VISIBILITY_COMPAT = "hidden" in document ? 9 : "mozHidden" in document ? 5 : "msHidden" in document ? 3 : "webkitHidden" in document ? 1 : 0
-      , VISIBILITY_CHANGE_EVENT = function(c){ return c & 8 ? "visibilitychange" : c & 4 ? "mozvisibilitychange" : c & 2 ? "msvisibilitychange" : c & 1 ? "webkitvisibilitychange" : null }( VISIBILITY_COMPAT )
-      , VISIBILITY_HIDDEN_PROPERTY = function(c){ return c & 8 ? "hidden" : c & 4 ? "mozHidden" : c & 2 ? "msHidden" : c & 1 ? "webkitHidden" : null }( VISIBILITY_COMPAT )
+      , VISIBILITY_COMPAT = CONST.VISIBILITY_COMPAT = "hidden" in document ? 9 : "mozHidden" in document ? 5 : "msHidden" in document ? 3 : "webkitHidden" in document ? 1 : 0
+      , VISIBILITY_CHANGE_EVENT = CONST.VISIBILITY_CHANGE_EVENT = function(c){ return c & 8 ? "visibilitychange" : c & 4 ? "mozvisibilitychange" : c & 2 ? "msvisibilitychange" : c & 1 ? "webkitvisibilitychange" : null }( VISIBILITY_COMPAT )
+      , VISIBILITY_HIDDEN_PROPERTY = CONST.VISIBILITY_HIDDEN_PROPERTY = function(c){ return c & 8 ? "hidden" : c & 4 ? "mozHidden" : c & 2 ? "msHidden" : c & 1 ? "webkitHidden" : null }( VISIBILITY_COMPAT )
       , XHR_COMPAT = "XMLHttpRequest" in root ? 1 : 0
 
-      , ERROR = 1, INIT = 2
-      , PENDING = 6, REJECTED = 10, RESOLVED = 18
+      , ERROR = CONST.ERROR = 1, INIT = CONST.INIT = 2
+      , PENDING = CONST.PENDING = 6, REJECTED = CONST.REJECTED = 10, RESOLVED = CONST.RESOLVED = 18
 
       , risnative = /\s*\[native code\]\s*/i
       , rtrim = /^\s+|\s+$/g
@@ -105,7 +105,29 @@
                 return toType(o) == "[object Array]"
             }
         }( isNative(Array.isArray) )
-
+      
+      , isObject = ns.isObject = function(o){
+            return o && o.constructor === Object
+        }
+      
+        // sleipnir related isX tests
+      , isInvocable = ns.isInvocable = function(o){
+            return o && ( typeof o.handleInvoke == "function" || typeof o == "function" )
+        }
+      
+      , isEventable = ns.isEventable = function(o){
+            return isInvocable(o) || ( o && isInvocable(o.handleEvent) )
+        }
+      
+      , isRoutable = ns.isRoutable = function(o){
+            return isInvocable(o) || ( o && isInvocable(o.handleRoute) )
+        }
+      
+      , isThenable = ns.isThenable = function(o){
+            return isInvocable(o) || ( o && (isInvocable(o.handleResolve) || isInvocable(o.handleReject) || isInvocable(o.handleProgress)) )
+        }
+      
+      
       , slice = ns.slice = function(slice){
             return function(o, idx){
                 var rv, i, l
@@ -200,7 +222,7 @@
 
                 args = isArray(arguments[1]) ? arguments[1]
                      : arguments[1] && ( (!STRICT_MODE&&!!arguments[1].callee)||toType(arguments[1]) == "[object Arguments]" ) ? arguments[1]
-                     : arguments[1] && arguments[1].constructor === Object ? buildMagicArguments(fn, arguments[1])
+                     : isObject(arguments[1]) ? buildMagicArguments(fn, arguments[1])
                      : []
 
                 ctx = ctx || arguments[2]
@@ -266,7 +288,7 @@
             Class.prototype.constructor = Class
             
             for ( k in statics ) if ( statics.hasOwnProperty(k) )
-              Class[k] == statics[k]
+              Class[k] = statics[k]
             
             Class.create = function(){
                 var args = arguments
@@ -363,8 +385,8 @@
             statics.invoke = invoke
 
             return {
-                constructor: function(dict){
-                    var dict = dict && dict.constructor === Object ? dict : {}
+                constructor: function(){
+                    var dict = isObject(arguments[0]) ? arguments[0] : {}
                       , k
 
                     this.__magicArguments__ =  this.__magicArguments__ || {}
@@ -435,7 +457,7 @@
 
             return {
                 constructor: function(dict){
-                    var dict = dict && dict.constructor === Object ? dict : {}
+                    var dict = isObject(arguments[0]) ? arguments[0] : {}
 
                     if ( dict.delimiter )
                       this.__delimiterSymbol__ = dict.delimiter
@@ -468,7 +490,7 @@
                         if ( !mapped )
                           return statics.CHARS[ Math.floor(Math.random()*radix) ]
 
-                        if ( typeof mapped.handleInvoke == "function" || typeof mapped == "function" )
+                        if ( isInvocable(mapped) )
                           v = invoke(mapped, [map_args])
 
                         v = mapped ? mapped.toString() : toType(mapped)
@@ -486,12 +508,12 @@
 
             return {
                 constructor: function(){
-                    var uuidDict = arguments[0] && arguments[0].constructor === Object ? arguments[0]
+                    var uuidDict = isObject(arguments[0]) ? arguments[0]
                                  : typeof arguments[0] == "string" ? { length: 36, rfc: true }
                                  : {}
 
                     this.__rfc__ = !!uuidDict.rfc
-                    this.__map__ = !this.__rfc__ && uuidDict.map && uuidDict.map.constructor === Object ? uuidDict.map
+                    this.__map__ = !this.__rfc__ && isObject(uuidDict.map) ? uuidDict.map
                                  : this.__rfc__ ? function(add){
                                        var o = {}
                                          , k
@@ -502,7 +524,7 @@
                                           o[k] = add[k]
 
                                        return o
-                                   }( uuidDict.map && uuidDict.map.constructor === Object ? uuidDict.map : {} )
+                                   }( isObject(uuidDict.map) ? uuidDict.map : {} )
                                  : {}
                     this.__length__ = !this.__rfc__ && +uuidDict.length ? +uuidDict.length : 36
                     this.__radix__ = !this.__rfc__ && +uuidDict.radix ? uuidDict.radix : statics.CHARS.length
@@ -516,7 +538,7 @@
 
       , EventEmitter = ns.EventEmitter = klass({
             constructor: function(){
-                var emitHandler = arguments[0] && (typeof arguments[0].handleInvoke == "function" || typeof arguments[0] == "function") ? arguments[0] : null
+                var emitHandler = isInvocable(arguments[0]) ? arguments[0] : null
                   , emit = emitHandler && function(emitter){
                         return function(){
                             return invoke(emitter.emit, arguments, emitter)
@@ -559,7 +581,7 @@
             }
 
           , on: function(){
-                if ( arguments.length == 1 && arguments[0].constructor === Object)
+                if ( arguments.length == 1 && isObject(arguments[0]) )
                   return function(ee, handlers, k){
                       for ( k in handlers ) if ( handlers.hasOwnProperty(k) )
                           ee.on(k, handlers[k])
@@ -567,9 +589,7 @@
 
                 var events = this.__events__ = this.__events__ || {}
                   , type = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
-                  , handler = arguments[1] && arguments[1].handleEvent && (typeof arguments[1].handleEvent.handleInvoke == "function" || typeof arguments[1].handleEvent == "function") ? arguments[1]
-                            : arguments[1] && (typeof arguments[1].handleInvoke == "function" || typeof arguments[1] == "function") ? arguments[1]
-                            : function(){}
+                  , handler = isEventable(arguments[1]) ? arguments[1] : function(){}
                   , handlers = events[type]
 
                 if ( !handlers || handlers === Object.prototype[type] )
@@ -580,16 +600,14 @@
                   events[type] = [handlers, handler]
             }
           , once: function(){
-                if ( arguments.length == 1 && arguments[0].constructor === Object )
+                if ( arguments.length == 1 && isObject(arguments[0]) )
                   return function(ee, handlers, k){
                       for ( k in handlers ) if ( handlers.hasOwnProperty(k) )
                         ee.once(k, handlers[k])
                   }(this, arguments[0])
 
                 var type = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
-                  , handler = arguments[1] && arguments[1].handleEvent && (typeof arguments[1].handleEvent.handleInvoke == "function" || typeof arguments[1].handleEvent == "function") ? arguments[1]
-                            : arguments[1] && (typeof arguments[1].handleInvoke == "function" || typeof arguments[1] == "function") ? arguments[1]
-                            : function(){}
+                  , handler = isEventable(arguments[1]) ? arguments[1] : function(){}
 
                 this.on(type, function(self){
                     return function f(){
@@ -603,7 +621,7 @@
                 }(this))
             }
           , off: function(){
-                if ( arguments.length == 1 && arguments[0].constructor === Object )
+                if ( arguments.length == 1 && isObject(arguments[0]) )
                   return function(ee, handlers, k){
                       for ( k in handlers ) if ( handlers.hasOwnProperty(k) )
                         ee.off(k, handlers[k])
@@ -612,12 +630,10 @@
                 var events = this.__events__ || {}
                   , type = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
                   , handler = arguments[1] == "*" ? function(){ delete events[type] }()
-                            : typeof arguments[1] == "function" || typeof arguments[1].handleInvoke == "function" || typeof arguments[1].handleEvent == "function" ? arguments[1]
+                            : isEventable(arguments[1]) ? arguments[1]
                             : function(){}
                   , handler = arguments[1] == "*" ? function(){ delete events[type] }()
-                            : arguments[1] && arguments[1].handleEvent && (typeof arguments[1].handleEvent.handleInvoke == "function" || typeof arguments[1].handleEvent == "function") ? arguments[1]
-                            : arguments[1] && (typeof arguments[1].handleInvoke == "function" || typeof arguments[1] == "function") ? arguments[1]
-                            : function(){}
+                            : isEventable(arguments[1]) ? arguments[1] : function(){}
                   , handlers = events[type]
                   , idx
 
@@ -730,7 +746,7 @@
 
             return {
                 constructor: function(){
-                    var resolveHandler = arguments[0] && (typeof arguments[0].handleInvoke == "function" || typeof arguments[0] == "function") ? arguments[0] : null
+                    var resolveHandler = isInvocable(arguments[0]) ? arguments[0] : null
                       , resolve = resolveHandler && function(promise){
                             return function(){
                                 return invoke(promise.resolve, arguments, promise)
@@ -752,14 +768,14 @@
                 }
               , __promiseState__: PENDING
               , then: function(){
-                    var onresolve = arguments[0] && arguments[0].handleResolve && (typeof arguments[0].handleResolve.handleInvoke == "function" || typeof arguments[0].handleResolve == "function") ? arguments[0]
-                                  : arguments[0] && (typeof arguments[0].handleInvoke == "function" || typeof arguments[0] == "function" ) ? arguments[0]
+                    var onresolve = arguments[0] && isInvocable(arguments[0].handleResolve) ? arguments[0]
+                                  : isInvocable(arguments[0]) ? arguments[0]
                                   : null
-                      , onreject = arguments[0] && arguments[0].handleReject && (typeof arguments[0].handleReject.handleInvoke == "function" || typeof arguments[0].handleReject == "function") ? arguments[0]
-                                 : arguments[1] && (typeof arguments[1].handleInvoke == "function" || typeof arguments[1] == "function") ? arguments[1]
+                      , onreject = arguments[0] && isInvocable(arguments[0].handleReject) ? arguments[0]
+                                 : isInvocable(arguments[1]) ? arguments[1]
                                  : null
-                      , onprogress = arguments[0] && arguments[0].handleProgress && (typeof arguments[0].handleProgress.handleInvoke == "function" || typeof arguments[0].handleProgress == "function") ? arguments[0]
-                                   : arguments[2] && (typeof arguments[2].handleInvoke == "function" || typeof arguments[2] == "function") ? arguments[2]
+                      , onprogress = arguments[0] && isInvocable(arguments[0].handleProgress) ? arguments[0]
+                                   : isInvocable(arguments[2]) ? arguments[2]
                                    : null
 
                       , oPromise = new Promise
@@ -942,7 +958,7 @@
               constructor: function(){
                   this.__routesDisptacher__ = typeof arguments[arguments.length-1] == "function" ? arguments[arguments.length-1] : null
 
-                  if ( arguments[0] && arguments[0].constructor === Object )
+                  if ( isObject(arguments[0]) )
                     this.when(arguments[0])
               }
             , when: function(){
@@ -956,9 +972,7 @@
                           router.when(k[i], routes[k[i]])
                     }(this, arguments[0])
 
-                  handler = arguments[1] && arguments[1].handleRoute && ( typeof arguments[1].handleRoute.handleInvoke == "function" || typeof arguments[1].handleRoute == "function" ) ? arguments[1]
-                          : arguments[1] && (typeof arguments[1].handleInvoke == "function" || typeof arguments[1] == "function") ? arguments[1]
-                          : function(){}
+                  handler = isRoutable(arguments[1]) ? arguments[1] : function(){}
 
                   route = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
 
@@ -980,9 +994,7 @@
                           router.when(k[i], routes[k[i]])
                     }(this, arguments[0])
 
-                  handler = arguments[1] && arguments[1].handleRoute && ( typeof arguments[1].handleRoute.handleInvoke == "function" || typeof arguments[1].handleRoute == "function" ) ? arguments[1]
-                          : arguments[1] && (typeof arguments[1].handleInvoke == "function" || typeof arguments[1] == "function") ? arguments[1]
-                          : function(){}
+                  handler = isRoutable(arguments[1]) ? arguments[1] : function(){}
 
                   route = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
 
@@ -1099,24 +1111,24 @@
                     return function(model, items){
                         if ( typeof items == "string" )
                           buildFromString(model, items)
-                        else if ( items && items.constructor === Object )
+                        else if ( isObject(items) )
                           buildFromHash(model, items)
                     }(this, arguments[0])
 
                   key = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
 
                   value = arguments[1]
-                  while ( value && (typeof value.handleInvoke == "function" || typeof value == "function") ) {
+                  while ( isInvocable(value) ) {
                       value = invoke(value, [this])
                   }
 
                   hook = ( this.__modelHooks__ || {}).hasOwnProperty(key) ? this.__modelHooks__[key] : null
                   ov = (this.__data__ = this.__data__ || {}).hasOwnProperty(key) ? this.__data__[key] : void 0
 
-                  if ( hook && (typeof hook.handleInvoke == "function" || typeof hook == "function") )
+                  if ( isInvocable(hook) )
                     value = invoke(hook, [value])
 
-                  if ( value && value.constructor === Object )
+                  if ( isObject(value) )
                     return buildFromHash(this, value, key)
 
                   if ( isArray(value) )
@@ -1146,7 +1158,9 @@
               }
             , getItem: function(){
                   var keys, i, l, hits
-
+                  
+                  this.__data__ = this.__data__ || {}
+                  
                   if ( arguments.length == 1 && typeof arguments[0] == "string" )
                       return this.__data__[arguments[0]]
 
@@ -1195,15 +1209,14 @@
                   var key, handler
                   this.__modelHooks__ = this.__modelHooks__ || {}
 
-                  if ( arguments.length == 1 && arguments[0] && arguments[0].constructor === Object )
+                  if ( arguments.length == 1 && isObject(arguments[0]) )
                     return function(model, hooks, k){
                         for ( k in hooks ) if ( hooks.hasOwnProperty(k) )
                           model.hookItem(k, hooks[k])
                     }(this, arguments[0])
 
                   key = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
-                  handler = arguments[1] && (typeof arguments[1].handleInvoke == "function" || typeof arguments[1] == "function") ? arguments[1]
-                          : function(){}
+                  handler = isInvocable(arguments[1]) ? arguments[1] : function(){}
 
                   this.__modelHooks__[key] = handler
               }
@@ -1341,8 +1354,8 @@
           return {
               constructor: function(){
                   var args = slice(arguments)
-                    , cookieHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : null
-                    , cookieDict = args[args.length-1] && args[args.length-1].constructor === Object ? args.pop() : ""
+                    , cookieHandler = isInvocable(args[args.length-1]) ? args.pop() : null
+                    , cookieDict = isObject(args[args.length-1]) ? args.pop() : ""
                     , exist
 
                   this.__cookieName__ = typeof args[args.length-1] == "string" ? args.shift() : toType(args.shift())
@@ -1358,27 +1371,28 @@
                   if ( exist = document.cookie.match(name+"=([^;]*)"), exist )
                     this.setItem(exist[1])
 
-
                   if ( cookieHandler )
-                    ;(function(cookie){
+                    (function(cookie){
                           function set(){ return invoke(cookie.setItem, arguments, cookie) }
                           function get(){ return invoke(cookie.getItem, arguments, cookie) }
 
                           invoke(cookieHandler, { $set: set, $get: get, 0: set, 1: get, length: 2 })
                     }( this ))
+                  
+                  this.on("update", function(cookie){
+                      return function(){ cookie.sync() }
+                  }( this ))
 
               }
             , sync: function(){
                   document.cookie = [this.__cookieName__, "=", this.serialize(), "; domain=", this.__cookieDomain__, "; path=", this.__cookiePath__, "; expires =", this.__cookieExpriration__, ";"].join("")
                   this.emit("sync")
               }
-            , setItem: function(){
-                  invoke(Super.prototype.setItem, arguments, this)
-                  this.sync()
-              }
-            , removeItem: function(){
-                  invoke(Super.prototype.removeItem, arguments, this)
-                  this.sync()
+            , clear: function(){
+                  var k
+                  
+                  for ( k in (this.__data__= this.__data||{}) ) if ( this.__data__.hasOwnProperty(k) )
+                    this.removeItem(k)
               }
           }
       })
@@ -1416,8 +1430,8 @@
                   var args = slice(arguments)
                     , servDict
 
-                  this.__defaultRequestHandler__ = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : null
-                  servDict = args[args.length-1] && args[args.length-1].constructor === Object ? args.pop() : { url: args.pop() }
+                  this.__defaultRequestHandler__ = isThenable(args[args.length-1]) ? args.pop() : null
+                  servDict = isObject(args[args.length-1]) ? args.pop() : { url: args.pop() }
 
                   this.__serviceType__ = typeof servDict.type == "string" ? servDict.type : "GET"
                   this.__serviceUrl__ = function(service, href){
@@ -1430,15 +1444,15 @@
                   this.__serviceUser__ = typeof servDict.user == "string" ? servDict.user : null
                   this.__servicePassword__ = typeof servDict.password == "string" ? servDict.password : null
                   this.__serviceTimeout__ = typeof servDict.timeout == "number" ? servDict.timeout : 0
-                  this.__serviceRequestHeaders = servDict.headers && servDict.header.constructor === Object ? servDict.headers : {}
+                  this.__serviceRequestHeaders = isObject(servDict.headers) ? servDict.headers : {}
                   this.__serviceOverrideMimeType__ = !!servDict.overrideMimeType
                   this.__serviceResponseType__ = typeof servDict.responseType == "string" ? servDict.responseType : null
               }
             , request: function(){
                   var args = slice(arguments)
-                    , requestHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : statics.defaultRequestHandler
+                    , requestHandler = isThenable(args[args.length-1]) ? args.pop() : statics.defaultRequestHandler
                     , requestBody = args[0] && (Model.isImplementedBy(args[0])||Collection.isImplementedBy(args[0])) ? args.shift().serialize()
-                                  : args[0] && args[0].constructor === Object ? Serializer.serialize(args.shift())
+                                  : isObject(args[0]) ? Serializer.serialize(args.shift())
                                   : typeof args[0] == "string" ? args.shift()
                                   : null
                     , requestUrl = this.__serviceType__ !== "GET" ? this.__serviceUrl__ : function(url){
@@ -1448,7 +1462,7 @@
                           
                           return url
                       }( this.__serviceUrl__ )
-                    , requestHeaders = args[0] && args[0].constructor === Object ? args.shift() : {}
+                    , requestHeaders = isObject(args[0]) ? args.shift() : {}
                     , output = new Promise(function(service){
                           return function(resolve, reject, request, k){
 
@@ -1776,7 +1790,7 @@
                   var args = slice(arguments)
                     , expression = typeof args[0] == "string" ? args.shift() : ""
                     , data = args[args.length-1] && (Model.isImplementedBy(args[args.length-1]) || Collection.isImplementedBy(args[args.length-1])) ? args.pop()
-                           : args[args.length-1] && args[args.length-1].constructor === Object ? new Model(args.pop())
+                           : isObject(args[args.length-1]) ? new Model(args.pop())
                            : new Model()
                     , stream
                     , output = { tree: document.createDocumentFragment() }
@@ -1908,7 +1922,7 @@
                   var args = slice(arguments)
                     , expression = typeof args[0] == "string" ? args.shift() : ""
                     , data = args[args.length-1] && (Model.isImplementedBy(args[args.length-1])||Collection.isImplementedBy(args[args.length-1])) ? args.pop()
-                           : args[args.length-1] && args[args.length-1].constructor === Object ? new Model(args.pop())
+                           : isObject(args[args.length-1]) ? new Model(args.pop())
                            : new Model()
                     , stream = new Iterator(expression)
                     , output = { assignments: {}, tree: document.createDocumentFragment() }
@@ -2039,14 +2053,14 @@
                 , parsedTemplate, k, i, l
                 , viewHandler, domEvents
 
-              viewHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function"||typeof args[args.length-1] == "function" ) ? args.pop() : null
+              viewHandler = isInvocable(args[args.length-1]) ? args.pop() : null
 
               this.__data__ = args[args.length-1] && (Model.isImplementedBy(args[args.length-1])||Collection.isImplementedBy(args[args.length-1])) ? args.pop()
-                            : args[args.length-1] && args[args.length-1].constructor === Object ? new this.__useModel__(args.pop())
+                            : isObject(args[args.length-1]) ? new this.__useModel__(args.pop())
                             : new this.__useModel__
               this.__template__ = typeof args[0] == "string" ? trim(args.shift())
-                                : args[0] && args[0].constructor === Object ? function(templateDict){
-                                      domEvents = templateDict.domEvents && templateDict.domEvents.constructor === Object ? templateDict.domEvents : null
+                                : isObject(args[0]) ? function(templateDict){
+                                      domEvents = isObject(templateDict.domEvents) ? templateDict.domEvents : null
                                       return typeof templateDict.template == "string" ? templateDict.template : ""
                                   }( args.shift() )
                                 : ""
@@ -2105,7 +2119,7 @@
           }
         , element: function(){
               var args = slice(arguments)
-                , elementHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function" ) ? args.pop() : function(){}
+                , elementHandler = isInvocable(args[args.length-1]) ? args.pop() : function(){}
                 , requested = args.length > 1 ? args
                            : args.length == 1 ? [args.shift()]
                            : ["root"]
@@ -2153,8 +2167,8 @@
           return {
               constructor: function(){
                   var args = slice(arguments)
-                    , sheetHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : null
-                    , startingRules = args[args.length-1] && args[args.length-1].constructor === Object ? args.pop() : {}
+                    , sheetHandler = isInvocable(args[args.length-1]) ? args.pop() : null
+                    , startingRules = isObject(args[args.length-1]) ? args.pop() : {}
                     , external
                     , node = function( sheet, _node, node, blob, url ){
                           if ( _node && _node.hasOwnProperty("tagName") && "link, style".indexOf(_node.tagName.toLowerCase()) != -1 )
@@ -2228,10 +2242,10 @@
               }
             , rule: function(){
                   var args = slice(arguments)
-                    , ruleHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function"||typeof args[args.length-1] == "function") ? args.pop() : null
-                    , selector, cssText, output
+                    , ruleHandler = isInvocable(args[args.length-1]) ? args.pop() : null
+                    , selector, cssText, output, rfn
 
-                  if ( args[0] && args[0].constructor === Object )
+                  if ( isObject(args[0]) )
                     return function(sheet, rules, k, rv){
                         var o = {}, _args
 
@@ -2262,11 +2276,34 @@
                   }(this))
 
                   if ( ruleHandler )
-                    output = output.then(ruleHandler)
-
-                  return function(){
-                      return output.then(arguments[0] && (typeof arguments[0].handleInvoke == "function"||typeof arguments[0] == "function") ? arguments[0] : function(){})
+                     output.then(ruleHandler)
+                  
+                  rfn = function(){
+                      return output.then(isThenable(arguments[0]) ? arguments[0] : function(){})
                   }
+                  rfn.__cssRulesPromise__ = output
+                  
+                  return rfn
+              }
+            , rules: function(){
+                  var args = slice(arguments)
+                    , rulesHandler = args[args.length-1] && !args[args.length-1].hasOwnProperty("__cssRulesPromise__") && isThenable(args[args.length-1]) ? args.pop() : null
+                    , rules = []
+                    , group
+                    , i = 0, l = arguments.length-1
+                  
+                  for ( ; i < l; i++ )
+                    if ( arguments[i].hasOwnProperty("__cssRulesPromise__"))
+                      rules[i] = arguments[i]
+                    else
+                      rules[i] = function(){ return new TypeError() }
+                  
+                  group = Promise.group(rules)
+                  
+                  if ( rulesHandler )
+                    group.then(rulesHandlers)
+                  
+                  return group
               }
             , disable: function(){
                   return this.__stylesheetReady__.then(function(sheet){
@@ -2356,8 +2393,8 @@
           return {
               constructor: function(){
                   var args = slice(arguments)
-                    , matrixHandler = args[args.length-1] && ( typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function" ) ? args.pop() : null
-                    , bcrDict = args[0] && args[0].constructor === Object ? args.shift()
+                    , matrixHandler = isThenable(args[args.length-1]) ? args.pop() : null
+                    , bcrDict = isObject(args[0]) ? args.shift()
                               : args[0] && args[0].nodeType == 1 ? { node: args.shift() }
                               : { node: document.documentElement }
 
@@ -2368,7 +2405,7 @@
               }
             , compute: function(){
                   var args = slice(arguments)
-                    , matrixHandler = args[args.length-1] && ( typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function" ) ? args.pop() : function(matrix){ return matrix }
+                    , matrixHandler = isThenable(args[args.length-1]) ? args.pop() : function(matrix){ return matrix }
 
                     , node = this.__node__
                     , referenceNode = args[args.length-1] && args[args.length-1].nodeType == 1 ? args.pop() : null
@@ -2435,9 +2472,9 @@
                     , transDict
 
                   this.__guid__ = statics.guid()
-                  this.__defaultTransitionHandler__ = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : null
+                  this.__defaultTransitionHandler__ = isThenable(args[args.length-1]) ? args.pop() : null
 
-                  transDict = args.length > 1 && args[args.length-1] && args[args.length-1].constructor === Object ? args.pop() : {}
+                  transDict = args.length > 1 && isObject(args[args.length-1]) ? args.pop() : {}
 
                   this.__properties__ = function(transition, aprops, rprops, k, aCssText, rCssText){
                       rCssText = []
@@ -2451,7 +2488,7 @@
                             aCssText.push( aprops[k].toString() + (transDict.timingUnit||"s") )
                           else if ( typeof aprops[k] == "string" )
                             aCssText.push( aprops[k].split(" ") )
-                          else if ( aprops[k] && aprops[k].constructor === Object ) {
+                          else if ( isObject(aprops[k]) ) {
                               aCssText.push( aprops[k].duration||0 )
 
                               if ( aprops[k].hasOwnProperty("timingFunction") )
@@ -2472,9 +2509,9 @@
             , animate: function(){
                   var oargs = arguments
                     , args = slice(arguments)
-                    , transitionHandler = args[args.length-1] && (typeof args[args.length-1].handleInvoke == "function" || typeof args[args.length-1] == "function") ? args.pop() : null
+                    , transitionHandler = isThenable(args[args.length-1]) ? args.pop() : null
 
-                    , props = args[args.length-1] && args[args.length-1].constructor === Object ? args.pop() : {}
+                    , props = isObject(args[args.length-1]) ? args.pop() : {}
                     , animating = [], events
 
                     , node = args[0] && args[0].nodeType == 1 ? args.shift() : document.createElement("div")
@@ -2620,12 +2657,12 @@
 
     root.__sleipnir__ = function(k){
         function sleipnir(){
-            if ( arguments[0] && (typeof arguments[0].handleInvoke == "function" || typeof arguments[0] == "function") )
-            return domReady.then(function(fn){
-                return function(nodes){
-                    return invoke(fn, { $: sleipnir, 0: nodes, length: 1 })
-                }
-            }(arguments[0]))
+            if ( isInvocable(arguments[0]) )
+              return domReady.then(function(fn){
+                  return function(nodes){
+                      return invoke(fn, { $: sleipnir, 0: nodes, length: 1 })
+                  }
+              }(arguments[0]))
         }
 
         for ( k in ns ) if ( ns.hasOwnProperty(k) )
@@ -2639,4 +2676,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.a08" }));
+}(window, { version: "ES3-0.6.a09" }));
