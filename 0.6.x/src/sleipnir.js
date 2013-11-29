@@ -701,14 +701,16 @@
 
                                     if ( fn && typeof fn.then == "function" )
                                       fn.then(function(){
-                                          _yield[idx] = slice(arguments)
+                                          var args = slice(arguments)
+                                          _yield[idx] = args.length > 1 ? args : args[0]
 
                                           if ( ++done == l )
                                             ondone()
 
                                       }, function(){
+                                          var args = slice(arguments)
                                           errors++
-                                          _yield[idx] = slice(arguments)
+                                          _yield[idx] = args.length > 1 ? args : args[0]
 
                                           if ( ++done == l )
                                             ondone()
@@ -2233,9 +2235,13 @@
                           function rule(){
                               return invoke(sheet.rule, arguments, sheet)
                           }
+                          
+                          function rules(){
+                              return invoke(sheet.rules, arguments, sheet)
+                          }
 
                           return function(){
-                              invoke(sheetHandler, { $rule: rule, 0: rule, length:1 })
+                              invoke(sheetHandler, { $rule: rule, $rules: rules, 0: rule, 1: rules, length: 2 })
                           }
                       }(this))
 
@@ -2294,14 +2300,20 @@
                   
                   for ( ; i < l; i++ )
                     if ( arguments[i].hasOwnProperty("__cssRulesPromise__"))
-                      rules[i] = arguments[i]
+                      rules[i] = new Promise(function(rule){
+                          return function(resolve){
+                              return rule(function(cssRules){
+                                  resolve(cssRules)
+                              })
+                          }
+                      }( arguments[i] ))
                     else
                       rules[i] = function(){ return new TypeError() }
                   
-                  group = Promise.group(rules)
+                  group = Promise.group(rules)()
                   
                   if ( rulesHandler )
-                    group.then(rulesHandlers)
+                    group.then(rulesHandler)
                   
                   return group
               }
@@ -2676,4 +2688,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.a09" }));
+}(window, { version: "ES3-0.6.a10" }));
