@@ -920,7 +920,7 @@
 
     , Router = ns.Router = klass(function(Super, statics){
           statics.defaultDispatcher = function(cache){
-              function getResponse(str, regexp, assignments, split, i, l){
+              function getRule(str, regexp, assignments, split, i, l){
                   if ( !cache.hasOwnProperty(str) )
                     if ( str.indexOf(":") == -1 )
                       cache[str] = new RegExp(str)
@@ -937,13 +937,16 @@
                       if ( assignments.length )
                         cache[str].assignments = assignments
                     }
-
+                    
                   return cache[str]
               }
 
-              return function(route, path, match, res, i, l){
-                  match = path.match( getResponse(route) )
-
+              return function(route, path, rule, match, res, i, l){
+                  rule = getRule(route)
+                  i = 0
+                  l = (rule.assignments||[]).length
+                  match = path.match( rule )
+                  
                   if ( !match )
                     return false
 
@@ -951,7 +954,8 @@
                     return true
 
                   for ( res = {}; i < l; i++ )
-                    res[assignements[i]] = match[i+1]
+                    res[rule.assignments[i]] = match[i+1]
+                  
                   return res
               }
           }( {} )
@@ -1015,11 +1019,6 @@
                     , args = slice(arguments, 1)
                     , iterator = new Iterator(this.__routes__)
                     , _next, _hit
-                    , invoker = new Invoker({ $req: route, $res: _hit, $args: args, $next: function(router){
-                          return function(){
-                              invoke(_next, [], router)
-                          }
-                      }(this) })
                     , hits = 0
                     , rv
                     , handle = function(router){
@@ -1030,7 +1029,10 @@
                               if ( !isArray(handler) ) {
                                 hits++
                                 _next = next
-                                rv = invoker.invoke(handler.handleRoute||handler, [].concat([_next, _hit, args]), handler.handleRoute?handler:null) || rv
+                                rv = invoke(handler.handleRoute||handler, {
+                                    $req: route, $res: _hit, $args: args.slice(0), $next: _next
+                                  , 0: _next, 1: args.slice(0), 2: _hit, length: 3
+                                }, handler.handleRoute?handler:null) || rv
 
                                 return typeof rv == "undefined" ? hits : rv
                               } else {
@@ -1042,8 +1044,11 @@
 
                                       if ( ++i >= l )
                                         _next = next
-
-                                      rv = invoker.invoke(handler[i].handleRoute||handler[i], [].concat([_next, _hit, args]), handler[i].handleRoute?handler[i]:null) || rv
+                                      
+                                      rv = invoke(handler[i].handleRoute||handler[i], {
+                                          $req: route, $res: _hit, $args: args.slice(0), $next: _
+                                        , 0: _next, 1: args.slice(0), 2: _hit, length: 3
+                                      }, handler[i].handleRoute?handler[i]:null) || rv
 
                                       return typeof rv == "undefined" ? hits : rv
                                   }
@@ -2688,4 +2693,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.a10" }));
+}(window, { version: "ES3-0.6.0a11" }));
