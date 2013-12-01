@@ -1029,10 +1029,14 @@
                               if ( !isArray(handler) ) {
                                 hits++
                                 _next = next
-                                rv = invoke(handler.handleRoute||handler, {
-                                    $req: route, $res: _hit, $args: args.slice(0), $next: _next
-                                  , 0: _next, 1: args.slice(0), 2: _hit, length: 3
-                                }, handler.handleRoute?handler:null) || rv
+                                rv = invoke(handler.handleRoute||handler, function(o, i, l){
+                                          o = { $req: route, $res: _hit, $args: args.slice(0), $next: _next, 0: _hit }
+                                          for ( i = 0, l = args.length; i < l; i++ )
+                                            o[i+1] = args[i]
+                                          o[i+1] = _next
+                                          o.length = l+2
+                                          return o
+                                      }(), handler.handleRoute?handler:null) || rv
 
                                 return typeof rv == "undefined" ? hits : rv
                               } else {
@@ -1045,10 +1049,14 @@
                                       if ( ++i >= l )
                                         _next = next
                                       
-                                      rv = invoke(handler[i].handleRoute||handler[i], {
-                                          $req: route, $res: _hit, $args: args.slice(0), $next: _
-                                        , 0: _next, 1: args.slice(0), 2: _hit, length: 3
-                                      }, handler[i].handleRoute?handler[i]:null) || rv
+                                      rv = invoke(handler[i].handleRoute||handler[i], function(o, i, l){
+                                                o = { $req: route, $res: _hit, $args: args.slice(0), $next: _next, 0: _hit }
+                                                for ( i = 0, l = args.length; i < l; i++ )
+                                                  o[i+1] = args[i]
+                                                o[i+1] = _next
+                                                o.length = l+2
+                                                return o
+                                            }(), handler[i].handleRoute?handler[i]:null) || rv
 
                                       return typeof rv == "undefined" ? hits : rv
                                   }
@@ -2693,4 +2701,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a11" }));
+}(window, { version: "ES3-0.6.0a12" }));
