@@ -95,7 +95,7 @@
       , VISIBILITY_HIDDEN_PROPERTY = CONST.VISIBILITY_HIDDEN_PROPERTY = function(c){ return c & 8 ? "hidden" : c & 4 ? "mozHidden" : c & 2 ? "msHidden" : c & 1 ? "webkitHidden" : null }( VISIBILITY_COMPAT )
       , XHR_COMPAT = "XMLHttpRequest" in root ? 1 : 0
 
-      , ERROR = CONST.ERROR = 1, INIT = CONST.INIT = 2
+      , NONE = CONST.NONE = 0, ERROR = CONST.ERROR = 1, INIT = CONST.INIT = 2
       , PENDING = CONST.PENDING = 6, REJECTED = CONST.REJECTED = 10, RESOLVED = CONST.RESOLVED = 18
 
       , risnative = /\s*\[native code\]\s*/i
@@ -1184,16 +1184,20 @@
 
                   this.emit("change>"+key, value, ov)
                   this.emit("change", key, value, ov)
-
-                  if ( indexOf( (this.__lastUpdatedKeys__ = this.__lastUpdatedKeys__ || []), key ) == -1 )
-                    this.__lastUpdatedKeys__.push(key)
-
-                  clearTimeout(this.__lastUpdateTimer__)
-                  this.__lastUpdateTimer__ = setTimeout(function(model){
-                      return function(){
-                          model.emit("update", model.__lastUpdatedKeys__.splice(0, model.__lastUpdatedKeys__.length))
-                      }
-                  }(this), 4)
+                  
+                  if ( this.__modelState__ & INIT ) {
+                    if ( indexOf( (this.__lastUpdatedKeys__ = this.__lastUpdatedKeys__ || []), key ) == -1 )
+                      this.__lastUpdatedKeys__.push(key)
+                    
+                    clearTimeout(this.__lastUpdateTimer__)
+                    this.__lastUpdateTimer__ = setTimeout(function(model){
+                        return function(){
+                            model.emit("update", model.__lastUpdatedKeys__.splice(0, model.__lastUpdatedKeys__.length))
+                        }
+                    }(this), 4)
+                  }
+                  
+                  this.__modelState__ = INIT
               }
             , getItem: function(){
                   var keys, i, l, hits
@@ -1580,7 +1584,7 @@
                           var vars = []
                             , hit, onupdate
 
-                          while ( hit = rtemplatevars.exec(rawId), hit )
+                          while ( hit = (rtemplatevars.exec(rawId)||[])[1], hit )
                             if ( indexOf(vars, hit) == -1 )
                               vars.push(hit)
 
@@ -1589,7 +1593,7 @@
                                 var i, l, hit, str = rawId, _val
 
                                 for ( i = 0, l = keys.length; i < l; i++ )
-                                  if ( indexOf(vars, keys[i]) ) {
+                                  if ( indexOf(vars, keys[i]) != -1 ) {
                                       hit = true
                                       break
                                   }
@@ -1598,7 +1602,8 @@
                                   for ( i = 0, l = vars.length; i < l; i++ ) {
                                     _val =  model.getItem(vars[i][1])
 
-                                    str = str.replace(vars[i][0], typeof _val !== "undefined" && _val !== null ? _val : vars[i][0])
+                                    if ( typeof _val !== "undefined" && _val !== null )
+                                      str = str.replace("@"+vars[i]+"@", _val)
                                   }
 
                                 write(node, str)
@@ -1627,7 +1632,7 @@
                           var vars = []
                             , hit, onupdate
 
-                            while ( hit = rtemplatevars.exec(rawClassName), hit )
+                            while ( hit = (rtemplatevars.exec(rawClassName)||[])[1], hit )
                               if ( indexOf(vars, hit) == -1 )
                                 vars.push(hit)
 
@@ -1636,7 +1641,7 @@
                                   var i, l, hit, str = rawClassName, _val
 
                                   for ( i = 0, l = keys.length; i < l; i++ )
-                                    if ( indexOf(vars, keys[i]) ) {
+                                    if ( indexOf(vars, keys[i]) != -1 ) {
                                         hit = true
                                         break
                                     }
@@ -1645,7 +1650,8 @@
                                     for ( i = 0, l = vars.length; i < l; i++ ) {
                                       _val =  model.getItem(vars[i][1])
 
-                                      str = str.replace(vars[i][0], typeof _val !== "undefined" && _val !== null ? _val : vars[i][0])
+                                      if ( typeof _val !== "undefined" && _val !== null )
+                                        str = str.replace("@"+vars[i]+"@", _val)
                                     }
 
                                   write(node, str)
@@ -1675,27 +1681,28 @@
                           var vars = []
                             , hit, onupdate
 
-                          while ( hit = rtemplatevars.exec(rawValue), hit )
+                          while ( hit = (rtemplatevars.exec(rawValue)||[])[1], hit )
                             if ( indexOf(vars, hit) == -1 )
                               vars.push(hit)
-
+                          
                           if ( vars.length )
                             onupdate = function(keys){
-                                var i, l, hit, str = rawValue, _val
+                                var i, l, hit, str = rawValue, _val, rval
 
                                 for ( i = 0, l = keys.length; i < l; i++ )
-                                  if ( indexOf(vars, keys[i]) ) {
+                                  if ( indexOf(vars, keys[i]) != -1 ) {
                                       hit = true
                                       break
                                   }
 
                                 if ( hit )
                                   for ( i = 0, l = vars.length; i < l; i++ ) {
-                                    _val =  model.getItem(vars[i][1])
-
-                                    str = str.replace(vars[i][0], typeof _val !== "undefined" && _val !== null ? _val : vars[i][0])
+                                    _val =  model.getItem(vars[i])
+                                    
+                                    if ( typeof _val !== "undefined" && _val !== null )
+                                      str = str.replace("@"+vars[i]+"@", _val)
                                   }
-
+                                
                                 write(node, rawAttr, str)
 
                                 model.once("update", onupdate)
@@ -1742,7 +1749,7 @@
                           var vars = []
                             , hit, onupdate
 
-                          while ( hit = rtemplatevars.exec(rawTextContent), hit )
+                          while ( hit = (rtemplatevars.exec(rawTextContent)||[])[1], hit )
                             if ( indexOf(vars, hit) == -1 )
                               vars.push(hit)
 
@@ -1751,7 +1758,7 @@
                                 var i, l, hit, str = rawTextContent, _val
 
                                 for ( i = 0, l = keys.length; i < l; i++ )
-                                  if ( indexOf(vars, keys[i]) ) {
+                                  if ( indexOf(vars, keys[i]) != -1 ) {
                                       hit = true
                                       break
                                   }
@@ -1759,7 +1766,9 @@
                                 if ( hit )
                                   for ( i = 0, l = vars.length; i < l; i++ ) {
                                     _val =  model.getItem(vars[i][1])
-                                    str = str.replace(vars[i][0], typeof _val !== "undefined" && _val !== null ? _val : vars[i][0])
+                                    
+                                    if ( typeof _val !== "undefined" && _val !== null )
+                                      str = str.replace("@"+vars[i]+"@", _val)
                                   }
 
                                 write(node, str)
@@ -2863,4 +2872,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a13" }));
+}(window, { version: "ES3-0.6.0a14" }));
