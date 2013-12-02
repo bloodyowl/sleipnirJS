@@ -6,7 +6,7 @@
 */
 
 /*
- variables to preserve : $super, $static, $e, $resolve, $reject, $progress, $, $$, $next, $route
+ variables to preserve : $super, $static, $e, $resolve, $reject, $progress, $, $$, $next, $route, $root, $nodes
 */
 
 ;(function(root, ns){ "use strict"
@@ -34,9 +34,28 @@
         }()
       , COMPUTED_STYLE_COMPAT = CONST.COMPUTED_STYLE_COMPAT = "getComputedStyle" in root ? 0x1 : 0x0
       , COOKIE_ENABLED = CONST.COOKIE_ENABLED = +navigator.cookieEnabled
+      
       , CSS_TRANSITION_COMPAT = CONST.CSS_TRANSITION_COMPAT = "getComputedStyle" in root  && "DOMStringMap" in root && "TransitionEvent" in root ? 0x1 : "WebKitTransitionEvent" in root ? 0x2 : 0
       , CSS_TRANSITION_PROPERTY = CONST.CSS_TRANSITION_PROPERTY = CSS_TRANSITION_COMPAT & 0x1 ? "transition" : CSS_TRANSITION_COMPAT & 0x2 ? "-webkit-transition" : null
       , CSS_TRANSITIONEND_EVENT = CONST.CSS_TRANSITIONEND_EVENT = CSS_TRANSITION_COMPAT & 0x1 ? "transitionend" : CSS_TRANSITION_COMPAT & 0x2 ? "webkitTransitionEnd" : null
+      
+      , CUSTOM_EVENTS_COMPAT = CONST.CUSTOM_EVENTS_COMPAT = function(rv, tests, i, l){
+            tests = [
+                function(){ new CustomEvent("ce", { bubbles: false, cancelable: false }, { detail: {} }); return 0x8 }
+              , function(){ document.createEvent("customEvent").initCustomEvent("ce", false, false, {}); return 0x4 }
+              , function(){ document.createEvent("Event").initEvent("ce", false, false); return 0x2 }
+              , function(){ document.createEventObject(); return 0x1 }
+            ]
+            
+            for ( i = 0, l = tests.length; i < l; i++ )
+              try {
+                  rv = tests[i].call()
+                  return rv
+              } catch(e){ }
+            
+            return 0
+        }()
+      
       , STYLESHEET_COMPAT = CONST.STYLESHEET_COMPAT = function(blob, node){
             if ( blob )
               return 5
@@ -88,7 +107,9 @@
 
         /* dom nodes */
       , docHead, docElt, docBody
-
+      
+      , noop = function(){}
+      
       , toType = ns.toType = function(toString){
             return function(o){
                 return toString.call(o)
@@ -96,8 +117,11 @@
         }( Object.prototype.toString )
 
       , isNative = ns.isNative = function(fn){
-            if ( typeof fn == "function" )
+            try {
               return fn.toString().match(risnative)
+            } catch(e) {
+              return false
+            }
         }
 
       , isArray = ns.isArray = function(hasIsArray){
@@ -1948,16 +1972,141 @@
           }
       }()
 
-
+    , createCustomEvent = function(){
+          switch ( CUSTOM_EVENTS_COMPAT ) {
+              case 8: return function(type, dict){
+                  type = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
+                  dict = isObject(arguments[1]) ? arguments[1] : {}
+                  return new CustomEvent(type, dict)
+              }
+              case 4: return function(type, dict, detail, event){
+                  event = document.createEvent("CustomEvent")
+                  type = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
+                  dict = isObject(arguments[1]) ? arguments[1] : {}
+                  detail = isObject(dict.detail) ? dict.detail : {}
+                  
+                  event.initCustomEvent(type, !!dict.bubbles, !!dict.cancelable, detail)
+                  return event
+              }
+              case 2: return function(type, dict, detail, event){
+                  event = document.createEvent("Event")
+                  type = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
+                  dict = isObject(arguments[1]) ? arguments[1] : {}
+                  detail = isObject(dict.detail) ? dict.detail : {}
+                  
+                  event.initEvent(type, !!dict.bubbles, !!dict.cancelable, detail)
+                  return event
+              }
+              case 1: return function(type, dict, detail, event){
+                  event = document.createEventObject()
+                  type = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
+                  dict = isObject(arguments[1]) ? arguments[1] : {}
+                  detail = isObject(dict.detail) ? dict.detail : {}
+                  
+                  event.type = type
+                  event.propertyName = "__on"+type
+                  event.cancelable = !dict.bubbles
+                  event.returnValue = !!dict.cancelable
+                  event.detaul = detail
+                  
+                  return event
+              }
+              default: throw new Error
+          }
+      }()
+    , dispatchCustomEvent = function(DE_COMPAT){
+          return DE_COMPAT ? function(node, event){ return node.dispatchEvent(event) }
+                           : function(node, event, now, then){
+                                 if ( node === root )
+                                   return domReady.then(function(nodes){
+                                      invoke(dispatchCustomEvent, [nodes.body, event])
+                                   }), undefined
+                                 
+                                 now = node[event.propertyName]
+                                 
+                                 setTimeout(function(){
+                                     then = node[event.propertyName]
+                                     
+                                     if ( now === then )
+                                       node[event.propertyName] = (+node[event.propertyName]) +1
+                                 }, 4)
+                             }
+      }( "dispatchEvent" in root )
+    , eventListenerHooks = function(toCloneProps){
+          toCloneProps = [
+              "screenX", "screenY", "clientX", "clientY", "pageX", "pageY", "layerX, layerY", "view"
+            , "altKey", "ctrlKey", "shiftKey", "metaKey", "which"
+            , "button", "buttons"
+            , "touches"
+          ]
+          
+          function redispatchEvent(e, node, type, ne, i, l){
+              ne = createCustomEvent(type, { bubbles: e.bubbdles, cancelable: e.cancelable, detail: e.detail })
+              
+              for ( i = 0, l = toCloneProps.length; i < l; i++ )
+                ne[toCloneProps[i]] = e[toCloneProps[i]]
+              
+              ne.preventDefault = function(){ e.preventDefault() }
+              ne.stopPropagation = function(){ e.stopPropagation() }
+              ne.stopImmediatePropagation = function(){ e.stopImmediatePropagation() }
+              ne.originalEvent = e
+              
+              dispatchCustomEvent(node, ne)
+          }
+          
+          return {
+              pointerdown: function(node){
+                  node.__pointerdownproxy__ = node.__pointerdownproxy__ || function(e){ redispatchEvent(e, node, "pointerdown") }
+                  addEventListener(node, "mousedown touchstart", node.__pointerdownproxy__, true)
+              }
+            , pointerup: function(node){
+                  node.__pointerupproxy__ = node.__pointerupproxy__ || function(e){ redispatchEvent(e, node, "pointerup") }
+                  addEventListener(node, "mouseup touchend", node.__pointerupproxy__, true)
+              }
+            , pointermove: function(node){
+                  node.__pointermoveproxy__ = node.__pointermoveproxy__ || function(e){ redispatchEvent(e, node, "pointermove") }
+                  addEventListener(node, "mousemove touchmove", node.__pointermoveproxy__, true)
+              }
+            , pointerenter: function(node, nevents){
+                  node.__pointerenterproxy__ = node.__pointerenterproxy__ || function(e){
+                      if ( e.type === "mouseover" && contains(node, e.target) )
+                        return
+                      redispatchEvent(e, node, "pointerenter")
+                  }
+                  addEventListener(node, ("onmouseenter" in root ? "mouseenter" : "mouseover") + "touchenter", node.__pointerenterproxy__, true)
+              }
+            , pointerleave: function(node){
+                  node.__pointerleaveproxy__ = node.__pointerleaveproxy__ || function(e){
+                      if ( e.type === "mouseout" && contains(node, e.target) )
+                        return
+                      redispatchEvent(e, node, "pointerleave")
+                  }
+                  addEventListener(node, ("onmouseleave" in root ? "mouseleave" : "mouseout") + "touchleave", node.__pointerleaveproxy__, true)
+              }
+          }
+      }()
+    
     , addEventListener = ns.addEventListener = function(AEL){
           return function(node, events, eventHandler, capture){
               var events = events.split(" ")
                 , i = 0, l = events.length
+                , hooked
 
               for ( ; i < l; i++ ) {
-
+                  
+                  if ( eventListenerHooks.hasOwnProperty(events[i]) )
+                    invoke(eventListenerHooks[events[i]], [node]),
+                    hooked = true
+                  
+                  if ( hooked && !AEL && node === root )
+                    return domReady(function(nodes){
+                        invoke(addEventListener, [nodes.body, events.join(" "), eventHandler])
+                    }), undefined
+                  
                   AEL ? node.addEventListener(events[i], eventHandler, !!capture)
-                      : node.attachEvent("on"+events[i], function(){
+                      : node.attachEvent(function(i){
+                            return "on" + ( hooked?"propertychange":events[i] )
+                        }(i), function(i){
                             var fn = typeof eventHandler.handleEvent == "function" ? eventHandler.handleEvent : eventHandler
 
                             fn.__sleipnirEventListenerProxy__ = fn.__sleipnirEventListenerProxy__ || function(e){
@@ -1994,7 +2143,7 @@
                             }
 
                             return fn.__sleipnirEventListenerProxy__
-                        }())
+                        }(i))
               }
 
           }
@@ -2036,11 +2185,24 @@
                   documentElement: docElt
                 , head: docHead
                 , body: docBody
-                , title: (document.getElementsByTagName("title")||[])[0]
-                , viewport: function(metas, i, l){
+                , title: function(title){
+                      if ( title )
+                        return title
+                      
+                      title = document.createElement("title")
+                      docHead.appendChild(title)
+                      return title
+                  }(document.getElementsByTagName("title")||[])[0]
+                , viewport: function(metas, meta, i, l){
                       for ( i = 0, l = metas.length; i < l; i++ )
                         if ( metas[i].name == "viewport" )
-                          return meta[i]
+                          return metas[i]
+                      
+                      meta = document.createElement("meta")
+                      meta.name = "viewport"
+                      meta.content = ""
+                      docHead.appendChild(meta)
+                      return meta
                   }( document.getElementsByTagName("meta") )
               })
           }
@@ -2191,7 +2353,7 @@
 
                           _node = function(split){
                               return external = split[0] === "css", split.pop()
-                          }( (typeof _node == "string" ? _node : toType(_node)).split("!") )
+                          }( (typeof _node == "string" ? _node : "").split("!") )
 
                           if ( external && statics.isLocalCSSFile(_node) ) {
                             node = nodeExpression.parse("link"+(typeof args[0] == "string" ? args.shift() : "")+"[rel=stylesheet][href=@url@]", {url: _node}).tree.childNodes[0]
@@ -2685,7 +2847,7 @@
             if ( isInvocable(arguments[0]) )
               return domReady.then(function(fn){
                   return function(nodes){
-                      return invoke(fn, { $: sleipnir, 0: nodes, length: 1 })
+                      return invoke(fn, { $: sleipnir, $root: window, $nodes: nodes, 0: nodes, length: 1 })
                   }
               }(arguments[0]))
         }
@@ -2701,4 +2863,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a12" }));
+}(window, { version: "ES3-0.6.0a13" }));
