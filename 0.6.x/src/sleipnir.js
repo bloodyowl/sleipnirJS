@@ -1600,7 +1600,7 @@
 
                                 if ( hit )
                                   for ( i = 0, l = vars.length; i < l; i++ ) {
-                                    _val =  model.getItem(vars[i][1])
+                                    _val =  model.getItem(vars[i])
 
                                     if ( typeof _val !== "undefined" && _val !== null )
                                       str = str.replace("@"+vars[i]+"@", _val)
@@ -1648,7 +1648,7 @@
 
                                   if ( hit )
                                     for ( i = 0, l = vars.length; i < l; i++ ) {
-                                      _val =  model.getItem(vars[i][1])
+                                      _val =  model.getItem(vars[i])
 
                                       if ( typeof _val !== "undefined" && _val !== null )
                                         str = str.replace("@"+vars[i]+"@", _val)
@@ -1765,7 +1765,7 @@
 
                                 if ( hit )
                                   for ( i = 0, l = vars.length; i < l; i++ ) {
-                                    _val =  model.getItem(vars[i][1])
+                                    _val =  model.getItem(vars[i])
                                     
                                     if ( typeof _val !== "undefined" && _val !== null )
                                       str = str.replace("@"+vars[i]+"@", _val)
@@ -2872,4 +2872,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a14" }));
+}(window, { version: "ES3-0.6.0a15" }));
