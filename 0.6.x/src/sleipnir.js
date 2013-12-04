@@ -297,7 +297,7 @@
                       args[args.length-1] = invoke(args[args.length-1], { $Super: Super, $static: statics, 0: Super, 1: statics, length: 2 })
                     }
                     
-                    if ( typeof args[args.length-1].constructor == "function" ) {
+                    if ( !isNative(args[args.length-1].constructor) ) {
                         Class = args[args.length-1].constructor
                         delete args[args.length-1].constructor
                     }
@@ -2351,7 +2351,7 @@
       })
 
 
-    , StyleSheet = ns.StyleSheet = klass(Promise, function(Super, statics){
+    , StyleSheet = ns.StyleSheet = klass(function(Super, statics){
           statics.isLocalCSSFile = function(a){
               return function(url){
                   a.href = url
@@ -2509,7 +2509,9 @@
                   if ( rulesHandler )
                     group.then(rulesHandler)
                   
-                  return group
+                  return function(){
+                      return group.then(isThenable(arguments[0])?arguments[0]:function(){})
+                  }
               }
             , disable: function(){
                   return this.__stylesheetReady__.then(function(sheet){
@@ -2854,4 +2856,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a16" }));
+}(window, { version: "ES3-0.6.0a17" }));
