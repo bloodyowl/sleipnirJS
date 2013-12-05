@@ -1624,13 +1624,20 @@
                       }
                   }()
                 , ".": function className(){
-                      function write(node, rawClassName){
-                          node.setAttribute("class", escapeHTML(rawClassName))
+                      function write(node, rawClassName, rawLastValue){
+                          if ( !node.className.length )
+                            node.className = escapeHTML(rawClassName)
+                          else
+                            if ( !rawLastValue )
+                              node.className += " "+escapeHTML(rawClassName)
+                            else
+                              node.className = node.className.replace(escapeHTML(rawLastValue), escapeHTML(rawClassName))
                       }
 
                       function set(node, rawClassName, model){
                           var vars = []
                             , hit, onupdate
+                            , lastValue
 
                             while ( hit = (rtemplatevars.exec(rawClassName)||[])[1], hit )
                               if ( indexOf(vars, hit) == -1 )
@@ -1654,7 +1661,8 @@
                                         str = str.replace("@"+vars[i]+"@", _val)
                                     }
 
-                                  write(node, str)
+                                  write(node, str, lastValue)
+                                  lastValue = str
 
                                   model.once("update", onupdate)
                               }, onupdate(vars)
@@ -2202,7 +2210,7 @@
               if ( ready )
                 return
               ready = 1
-
+              
               docElt = document.documentElement || document.getElementByTagName("html")[0]
               docHead = document.head || document.getElementsByTagName("head")[0]
               docBody = document.body || document.getElementsByTagName("body")[0]
@@ -2242,7 +2250,7 @@
 
           if ( "readyState" in document ) {
             if ( document.readyState === "complete" )
-              resolve()
+              onready()
           } else setTimeout(onready, 4)
 
           addEventListener(root, "DOMContentLoaded", onready, true)
@@ -2859,8 +2867,8 @@
     }()
 
     if ( typeof root.define == "function" && define.amd )
-      define(function(){ return __sleipnir__ })
+      define([], function(){ return __sleipnir__ })
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a18" }));
+}(window, { version: "ES3-0.6.0a19" }));
