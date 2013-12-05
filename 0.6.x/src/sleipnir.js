@@ -312,6 +312,8 @@
             for ( k in statics ) if ( statics.hasOwnProperty(k) )
               Class[k] = statics[k]
             
+            Class.Super = Super
+            
             Class.create = function(){
                 var args = arguments
                 function F(){
@@ -2172,9 +2174,14 @@
           return function(node, events, eventHandler, capture){
               var events = events.split(" ")
                 , i = 0, l = events.length
-
+              
               for ( ; i < l; i++ ) {
-
+                  
+                  if ( !REL && eventListenerHooks.hasOwnProperty(events[i]) && node === root )
+                      return domReady(function(nodes){
+                          invoke(removeEventListener, [nodes.body, events.join(" "), eventHandler])
+                      }), undefined
+                  
                   REL ? node.removeEventListener(events[i], eventHandler, !!capture)
                       : node.detachEvent("on"+events[i], function(){
                             var fn = typeof eventHandler.handleEvent == "function" ? eventHandler.handleEvent : eventHandler
@@ -2856,4 +2863,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a17" }));
+}(window, { version: "ES3-0.6.0a18" }));
