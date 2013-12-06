@@ -83,7 +83,7 @@
             i = split.length
 
             while ( i-- )
-              if ( curr = "."+split.slice(i).join("."), hit = cookie(curr), hit )
+              if ( curr = /*"."+*/split.slice(i).join("."), hit = cookie(curr), hit )
                 return curr
 
             return location.hostname
@@ -1143,6 +1143,9 @@
                     this.setItem(arguments[0])
               }
             , __useSerializer__: Serializer
+            , initModel: function(){
+                  this.__modelState__ = INIT
+              }
             , setItem: function(){
                   var key, value, hook, ov, added
 
@@ -1197,7 +1200,7 @@
                     }(this), 4)
                   }
                   
-                  this.__modelState__ = INIT
+                  this.initModel()
               }
             , getItem: function(){
                   var keys, i, l, hits
@@ -1405,7 +1408,7 @@
                   this.__cookieLifespan__ = typeof cookieDict.maxAge == "number" ? cookieDict.maxAge : null
                   this.__cookieSession__ = !!cookieDict.session
 
-                  this.__cookieDomain__ = typeof cookieDict.domain == "string" ? cookieDict.domain : TOP_DOMAIN
+                  this.__cookieDomain__ = typeof cookieDict.domain == "string" ? cookieDict.domain : "."+TOP_DOMAIN
                   this.__cookiePath__ = typeof cookieDict.path == "string" ? cookieDict.path : "/"
                   this.__cookieExpiration__ = !!cookieDict.session ? ""
                                             : !isNaN(+(new Date(cookieDict.expires))) ? new Date(cookieDict.expires).toUTCString()
@@ -1413,7 +1416,7 @@
 
                   if ( exist = document.cookie.match(name+"=([^;]*)"), exist )
                     this.setItem(exist[1])
-
+                    
                   if ( cookieHandler )
                     (function(cookie){
                           function set(){ return invoke(cookie.setItem, arguments, cookie) }
@@ -1422,10 +1425,10 @@
                           invoke(cookieHandler, { $set: set, $get: get, 0: set, 1: get, length: 2 })
                     }( this ))
                   
+                  this.initModel()
                   this.on("update", function(cookie){
                       return function(){ cookie.sync() }
                   }( this ))
-
               }
             , sync: function(){
                   document.cookie = [this.__cookieName__, "=", this.serialize(), "; domain=", this.__cookieDomain__, "; path=", this.__cookiePath__, "; expires =", this.__cookieExpriration__, ";"].join("")
@@ -1548,7 +1551,7 @@
                   output = output.then(this.__defaultRequestHandler__||statics.defaultRequestHandler)
 
                   if ( requestHandler )
-                    output = output.then(requestHandler)
+                    output.then(requestHandler)
 
                   return output
               }
@@ -2577,7 +2580,7 @@
         , W: function(){ return new Point(Math.round(this.__bcr__.left - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height/2 - this.__origin__.y)) }
       })
 
-    , BCR = ns.BCR = klass(function(Super, statics){
+    , ClientRect = ns.ClientRect = klass(function(Super, statics){
            function getBoundingClientRect(node){
               var bcr, clientT, clientL, offsetX, offsetY
 
@@ -2663,7 +2666,7 @@
                   if ( this.__defaultMatrixHandler__ )
                     output = output.then(this.__defaultMatrixHandler__)
                   if ( matrixHandler )
-                    output = output.then(matrixHandler)
+                    output.then(matrixHandler)
 
                   return output
               }
@@ -2842,7 +2845,7 @@
                   if ( this.__defaultTransitionHandler__ )
                     output = output.then(this.__defaultTransitionHandler__)
                   if ( transitionHandler )
-                    output = output.then(transitionHandler)
+                    output.then(transitionHandler)
                   
                   return output
               }
@@ -2871,4 +2874,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a19" }));
+}(window, { version: "ES3-0.6.0a20" }));
