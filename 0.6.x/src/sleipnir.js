@@ -1203,22 +1203,31 @@
                   this.initModel()
               }
             , getItem: function(){
-                  var keys, i, l, hits
+                  var args = slice(arguments)
+                    , getHandler = isThenable(args[args.length-1]) ? args.pop() : null
+                    , output
+                    , keys, i, l, hits
                   
                   this.__data__ = this.__data__ || {}
-                  
-                  if ( arguments.length == 1 && typeof arguments[0] == "string" )
-                      return this.__data__[arguments[0]]
 
-                  if ( isArray(arguments[0]) )
-                    keys = arguments[0]
+                  if ( isArray(args[0]) )
+                    keys = args[0]
                   else
-                    keys = slice(arguments)
+                    keys = args
 
                   for ( hits = [], i = 0, l = keys.length; i < l; i++ )
                     hits[i] = this.__data__[ (typeof keys[i] == "string" ? keys[i] : toType(keys[i])) ]
-
-                  return hits
+                  
+                  if ( getHandler ) {
+                    output = new Promise(function(resolve){
+                        invoke(resolve, hits)
+                    })
+                    output.then(getHandler)
+                    
+                    return output
+                  }
+                  
+                  return hits.length > 1 ? hits : hits[0]
               }
             , removeItem: function(){
                   var key, hit, ov
@@ -1443,7 +1452,7 @@
           }
       })
 
-    , WebStore = ns.WebStore = klass(Model, function(Super, statics){
+    , LocalStore = ns.LocalStore = klass(Model, function(Super, statics){
 
           return {
               constructor: function(){
@@ -1451,7 +1460,8 @@
               }
           }
       })
-
+    
+    , Store = ns.Store = klass({})
 
     , Service = ns.Service = klass(function(Super, statics){
           statics.defaultRequestHandler = function(status, request){
@@ -2531,6 +2541,17 @@
                       return group.then(isThenable(arguments[0])?arguments[0]:function(){})
                   }
               }
+            , media: function(){
+                  if ( typeof arguments[0] == "string" )
+                    this.__stylesheetReady__.then(function(media){
+                        return function(sheet){
+                            try {
+                              sheet.__sheet__.media.mediaText = media
+                            } catch(e){ }
+                        }
+                    }(arguments[0]))
+                  
+              }
             , disable: function(){
                   return this.__stylesheetReady__.then(function(sheet){
                       if ( !sheet.__sheet__.disabled )
@@ -2874,4 +2895,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a20" }));
+}(window, { version: "ES3-0.6.0a21" }));
