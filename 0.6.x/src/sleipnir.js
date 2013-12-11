@@ -503,7 +503,7 @@
             statics.uuid = function(length, radix, map_args){
                 var i = 0, l = typeof arguments[0] == "number" ? arguments[0] : 36
                   , radix = typeof arguments[1] == "number" ? Math.abs(Math.min(arguments[1], statics.CHARS.length)) : statics.CHARS.length
-                  , map = this && this.constructor === Uuid && this.__map__ ? this.__map__
+                  , map = this && Uuid.isImplementedBy(this) && this.__map__ ? this.__map__
                         : !arguments.length ? rfcMap
                         : {}
                   , map_args = arguments[2]
@@ -1143,6 +1143,11 @@
                     this.setItem(arguments[0])
               }
             , __useSerializer__: Serializer
+            , useSerializer: function(){
+                  if ( arguments[0] && Serializer.isImplementedBy(arguments[0].prototype) )
+                    return this.__useSerializer__ = arguments[0], true
+                  return false
+              }
             , initModel: function(){
                   this.__modelState__ = INIT
               }
@@ -1292,10 +1297,13 @@
             , __useModel__: Model
             , __useSerializer__: statics.modelsSerializer
             , useModel: function(){
-                  var M = arguments[0]
-
-                  if ( Model.isImplementedBy(M) )
-                    return this.__useModel__ = M, true
+                  if ( arguments[0] && Model.isImplementedBy(arguments[0].prototype) )
+                    return this.__useModel__ = arguments[0], true
+                  return false
+              }
+            , useSerializer: function(){
+                  if ( arguments[0] && Serializer.isImplementedBy(arguments[0].prototype) )
+                    return this.__useSerializer__ = arguments[0], true
                   return false
               }
             , addModel: function(){
@@ -1313,14 +1321,23 @@
                     else
                       adds = [arguments[0]]
 
-                  for ( i = 0, l = adds.length; i < l; i++ )
-                    if ( Model.isImplementedBy(adds[i]) ) {
-                      if ( indexOf( this.__models__, adds[i]) == -1 )
-                        this.__models__.push(adds[i])
-                    } else {
-                        m = new this.__useModel__(adds[i])
-                        this.__models__.push(m)
-                    }
+                  for ( i = 0, l = adds.length; i < l; i++ ) {
+                    
+                    m = Model.isImplementedBy(adds[i]) && indexOf( this.__models__, adds[i]) == -1 ? adds[i]
+                      : isObject(adds[i]) && new this.__useModel__(adds[i])
+                    
+                    if ( m )
+                      this.__models__.push(m)
+                    
+                    m.on("update", function(collection){
+                        return function onupdate(keys){
+                            if ( indexOf(collection.__models__, adds[i]) == -1 )
+                              return m.off("update", onupdate)
+                            
+                            collection.emit("update", m, keys)
+                        }
+                    }( this ))
+                  }
 
                   return true
               }
@@ -1473,36 +1490,88 @@
               })
           }
 
-          statics.isLocalService = function(a){
-              return function(url){
-                  a.href = url
-
-                  return a.domain === location.domain
-              }
-          }( document.createElement("a") )
-
           return {
               constructor: function(){
+                  invoke(this.initService, arguments, this)
+              }
+            , initService: function(){
                   var args = slice(arguments)
                     , servDict
-
+                  
                   this.__defaultRequestHandler__ = isThenable(args[args.length-1]) ? args.pop() : null
                   servDict = isObject(args[args.length-1]) ? args.pop() : { url: args.pop() }
-
+                  
                   this.__serviceType__ = typeof servDict.type == "string" ? servDict.type : "GET"
-                  this.__serviceUrl__ = function(service, href){
-                      if ( servDict.xdomain || statics.isLocalService(href) )
-                        return href
-                      throw new Error() //todo
-                  }( this, typeof servDict.url == "string" ? servDict.url : toType(servDict.url) )
-
+                  this.__serviceUrl__ = typeof servDict.url == "string" ? servDict.url : toType(servDict.url)
                   this.__serviceSync__ = !!servDict.sync
                   this.__serviceUser__ = typeof servDict.user == "string" ? servDict.user : null
                   this.__servicePassword__ = typeof servDict.password == "string" ? servDict.password : null
                   this.__serviceTimeout__ = typeof servDict.timeout == "number" ? servDict.timeout : 0
                   this.__serviceRequestHeaders = isObject(servDict.headers) ? servDict.headers : {}
-                  this.__serviceOverrideMimeType__ = !!servDict.overrideMimeType
+                  this.__serviceOverrideMimeType__ = typeof servDict.overrideMimeType == "string" ? servDict.overrideMimeType : null
                   this.__serviceResponseType__ = typeof servDict.responseType == "string" ? servDict.responseType : null
+              }
+            , requestType: function(){
+                  if ( !arguments.length )
+                    return this.__serviceType__ = this.__serviceType__ || "GET"
+                  
+                  this.__serviceType__ = typeof arguments[0] == "string" ? arguments[0] : "GET"
+              }
+            , requestUrl: function(){
+                  if ( !arguments.length )
+                    return this.__serviceUrl__ = this.__serviceUrl__ || ""
+                  
+                  this.__serviceUrl__ = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
+              }
+            , requestAsync: function(v){
+                  if ( !arguments.length )
+                    return this.__serviceSync__ = this.__serviceSync__ || false
+                  this.__serviceSync__ = !arguments[0]
+              }
+            , requestCredentials: function(){
+                  var user, password
+                  
+                  if ( !arguments.length ) {
+                    user = this.__serviceUser__ = this.__serviceUser__ || null
+                    password = this._servicePassword__ = this.__servicePassword || null
+                    return { user: user, password: password }
+                  }
+                  
+                  this.__serviceUser__ = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
+                  this.__servicePassword__ = typeof arguments[1] == "string" ? arguments[1] : toType(arguments[1])
+              }
+            , requestTimeout: function(){
+                  var buff
+                  
+                  if ( !arguments.length )
+                    return this.__serviceTimeout__ = this.__serviceTimeout__ || 0
+                  
+                  this.__serviceTimeout__ = typeof arguments[0] == "number" ? arguments[0] : (buff = parseInt(arguments[0], 10), !isNaN(buff) ? buff : 0)
+              }
+            , requestHeaders: function(){
+                  if ( !arguments.length )
+                    return this.__serviceRequestHeaders__ = this.__serviceRequestHeaders__ || {}
+                  
+                  this.__serviceRequestHeader__ = isObject(arguments[0]) ? arguments[0] : {}
+              }
+            , requestMimeType: function(){
+                  if ( !arguments.length )
+                    return this.__serviceOverrideMimeType__ = this.__serviceOverrideMimeType__ || null
+                  
+                  this.__serviceOverrideMimeType__ = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
+              }
+            , requestResponseType: function(){
+                  if ( !arguments.length )
+                    return this.__serviceResponseType__ = this.__serviceResponseType__ || null
+                  
+                  this.__serviceResponseType__ = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
+              }
+            , requestDefaultHandler: function(){
+                  if ( !arguments.length )
+                    return this.__serviceDefaultRequestHandler__ || statics.defaultRequestHandler
+                  
+                  if ( isThenable(arguments[0]) )
+                    this.__serviceDefaultRequestHandler__ = arguments[0]
               }
             , request: function(){
                   var args = slice(arguments)
@@ -1558,7 +1627,7 @@
                           }
                       }( this ))
 
-                  output = output.then(this.__defaultRequestHandler__||statics.defaultRequestHandler)
+                  output = output.then(this.__serviceDefaultRequestHandler__||statics.defaultRequestHandler)
 
                   if ( requestHandler )
                     output.then(requestHandler)
@@ -2002,7 +2071,7 @@
           }
       }()
     
-    , requestAnimationFrame = function(){
+    , requestAnimationFrame = ns.requestAnimationFrame = function(){
           return "requestAnimationFrame" in root ? function(){ invoke(root.requestAnimationFrame, arguments) }
                : "mozRequestAnimationFrame" in root ? function(){ invoke(root.mozRequestAnimationFrame, arguments) }
                : "msRequestAnimationFrame" in root ? function(){ invoke(root.msRequestAnimationFrame, arguments) }
@@ -2273,45 +2342,74 @@
 
       , View = ns.View = klass(EventEmitter, {
           constructor: function(){
+              invoke(this.initView, arguments, this)
+          }
+        , initView: function(){
               var args = slice(arguments)
                 , parsedTemplate, k, i, l
                 , viewHandler, domEvents
-
+              
               viewHandler = isInvocable(args[args.length-1]) ? args.pop() : null
-
-              this.__data__ = args[args.length-1] && (Model.isImplementedBy(args[args.length-1])||Collection.isImplementedBy(args[args.length-1])) ? args.pop()
+              
+              if ( Service.isImplementedBy(args[args.length-1]) )
+                return function(view, service){
+                    return view.__viewReady__ = service.request({
+                        handleResolve: function(data){
+                            args.push(data)
+                            
+                            if ( viewHandler )
+                              args.push(viewHandler)
+                            
+                            invoke(view.initView, args, view)
+                        }
+                      , handleReject: function(){
+                            args.push({})
+                            
+                            if ( viewHandler )
+                              args.push(viewHandler)
+                            
+                            invoke(view.initView, args, view)
+                        }
+                    })
+                }( this, args.pop() )
+              this.__viewReady__ = new Promise(function(resolve){ resolve() })
+              
+              this.__data__ = args[args.length-1] && Model.isImplementedBy(args[args.length-1]) ? args.pop()
                             : isObject(args[args.length-1]) ? new this.__useModel__(args.pop())
                             : new this.__useModel__
+              
               this.__template__ = typeof args[0] == "string" ? trim(args.shift())
                                 : isObject(args[0]) ? function(templateDict){
                                       domEvents = isObject(templateDict.domEvents) ? templateDict.domEvents : null
                                       return typeof templateDict.template == "string" ? templateDict.template : ""
                                   }( args.shift() )
                                 : ""
-
+              
               parsedTemplate = htmlExpression.parse(this.__template__, this.__data__)
-
+              
               this.__fragment__ = parsedTemplate.tree
               this.__elements__ = parsedTemplate.assignments
-
+              
               this.__elements__.root = this.__elements__.root || []
               for ( i = 0, l = this.__fragment__.childNodes.length; i < l; i++ )
                 if ( indexOf(this.__elements__.root, this.__fragment__.childNodes[i]) == -1 )
                   this.__elements__.root.push(this.__fragment__.childNodes[i])
-
+              
               if ( this.__defaultDOMEvents__ )
                 this.addDOMEventListener(this.__defaultDOMEvents__)
-
+              
               if ( domEvents )
                 this.addDOMEventListener(domEvents)
-
+              
+              this.__viewState__ = INIT
+              
               if ( viewHandler )
                 (function(view){
                     function html(){ return invoke(view.html, arguments, view) }
                     function recover(){ return invoke(view.recover, arguments, view) }
-
+              
                     var model = view.__data__
-
+              
                     invoke(viewHandler, { $html: html, $recover: recover, $model: model, 0: html, 1: recover, 2: model, length: 3 })
                 }(this))
           }
@@ -2324,22 +2422,32 @@
               return false
           }
         , html: function(){
+              if ( !this.__viewState__ )
+                if ( arguments.length )
+                  return this.__viewReady__.then(function(view, args){
+                      return function(){ invoke(view.html, args, view) }
+                  }(this, arguments))
+              
+              this.__fragment__ = this.__fragment__ || document.createDocumentFragment()
+              
               if ( !this.__fragment__.childNodes.length )
                 this.recover()
-
+              
+              if ( isInvocable(arguments[0]) )
+                invoke(arguments[0], [this.__fragment__])
+              
               return this.__fragment__
           }
         , recover: function(){
               var i, l
-
-              if ( !this.__fragment__ || this.__fragment__.nodeType !== 11 )
-                this.__fragment__ = document.createDocumentFragment()
+              
+              this.__fragment__ = this.__fragment__ || document.createDocumentFragment()
 
               for ( i = 0, l = this.__elements__.root; i < l; i++ )
                 this.__fragment__.appendChild(this.__elements__.root[i])
           }
         , clone: function(){
-              return new this.constructor(this.__template__, this.__data__)
+              return this.__viewState__ & INIT ? new this.constructor(this.__template__, this.__data__) : new Error
           }
         , element: function(){
               var args = slice(arguments)
@@ -2352,9 +2460,10 @@
 
               for ( ; i < l; i++ )
                   requested[i] = typeof requested[i] == "string" ? requested[i] : toType(requested[i]),
-                  elements[i] = this.__elements__.hasOwnProperty(requested[i]) ? this.__elements__[requested[i]] : null
+                  elements[i] = this.__elements__.hasOwnProperty(requested[i]) ? this.__elements__[requested[i]].length > 1 ? this.__elements__[requested[i]] : this.__elements__[requested[i]][0] : null
 
-              invoke(elementHandler, elements.length>1?elements:elements[0])
+              invoke(elementHandler, elements)
+              return elements
           }
         , addDOMEventListener: function(){
               var eltRef, elts, event, handler, capture, i, l
@@ -2895,4 +3004,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a21" }));
+}(window, { version: "ES3-0.6.0a22" }));
