@@ -1,7 +1,7 @@
 {
     "name": "sleipnirJS"
   , "version": "0.6.0-ax"
-  , "main": "build/sleipnir.min.js"
+  , "main": "src/sleipnir.js"
   , "repository": { "type": "git", "url": "https://github.com/grid23/sleipnirJS.git" }
   , "authors": ["Benjamin Moulin"]
   , "licence": "WTFPL2"
