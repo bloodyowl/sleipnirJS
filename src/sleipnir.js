@@ -34,7 +34,7 @@
         }()
       , COMPUTED_STYLE_COMPAT = CONST.COMPUTED_STYLE_COMPAT = "getComputedStyle" in root ? 0x1 : 0x0
       , COOKIE_ENABLED = CONST.COOKIE_ENABLED = +navigator.cookieEnabled
-      
+
       , CSS_TRANSITION_COMPAT = CONST.CSS_TRANSITION_COMPAT = "getComputedStyle" in root  && "DOMStringMap" in root && "TransitionEvent" in root ? 0x1 : "WebKitTransitionEvent" in root ? 0x3 : 0
       , CSS_TRANSITION_PROPERTY = CONST.CSS_TRANSITION_PROPERTY = CSS_TRANSITION_COMPAT & 0x1 ? "transition" : CSS_TRANSITION_COMPAT & 0x3 ? "-webkit-transition" : null
       , CSS_TRANSITIONEND_EVENT = CONST.CSS_TRANSITIONEND_EVENT = CSS_TRANSITION_COMPAT & 0x1 ? "transitionend" : CSS_TRANSITION_COMPAT & 0x3 ? "webkitTransitionEnd" : null
@@ -45,13 +45,13 @@
               , function(){ document.createEvent("Event").initEvent("ce", false, false); return 0x2 }
               , function(){ document.createEventObject(); return 0x1 }
             ]
-            
+
             for ( i = 0, l = tests.length; i < l; i++ )
               try {
                   rv = tests[i].call()
                   return rv
               } catch(e){ }
-            
+
             return 0
         }()
       , STYLESHEET_COMPAT = CONST.STYLESHEET_COMPAT = function(blob, node){
@@ -105,9 +105,9 @@
 
         /* dom nodes */
       , docHead, docElt, docBody
-      
+
       , noop = function(){}
-      
+
       , toType = ns.toType = function(toString){
             return function(o){
                 return toString.call(o)
@@ -127,29 +127,29 @@
                 return toType(o) == "[object Array]"
             }
         }( isNative(Array.isArray) )
-      
+
       , isObject = ns.isObject = function(o){
             return o && o.constructor === Object
         }
-      
+
         // sleipnir related isX tests
       , isInvocable = ns.isInvocable = function(o){
             return o && ( typeof o.handleInvoke == "function" || typeof o == "function" )
         }
-      
+
       , isEventable = ns.isEventable = function(o){
             return isInvocable(o) || ( o && isInvocable(o.handleEvent) )
         }
-      
+
       , isRoutable = ns.isRoutable = function(o){
             return isInvocable(o) || ( o && isInvocable(o.handleRoute) )
         }
-      
+
       , isThenable = ns.isThenable = function(o){
             return isInvocable(o) || ( o && (isInvocable(o.handleResolve) || isInvocable(o.handleReject) || isInvocable(o.handleProgress)) )
         }
-      
-      
+
+
       , slice = ns.slice = function(slice){
             return function(o, idx){
                 var rv, i, l
@@ -286,7 +286,7 @@
                 return rv
             }
         }()
-      
+
       , klass = ns.klass = function(){
             var args = slice(arguments)
               , Super = args.length == 2 ? args[0] : null
@@ -296,68 +296,68 @@
                     if ( typeof args[args.length-1] == "function" ) {
                       args[args.length-1] = invoke(args[args.length-1], { $Super: Super, $static: statics, 0: Super, 1: statics, length: 2 })
                     }
-                    
+
                     if ( !isNative(args[args.length-1].constructor) ) {
                         Class = args[args.length-1].constructor
                         delete args[args.length-1].constructor
                     }
-                    
+
                     return invoke(mixin, args)
                 }()
-            
+
             Class = Class || function(){}
             Class.prototype = prototype
             Class.prototype.constructor = Class
-            
+
             for ( k in statics ) if ( statics.hasOwnProperty(k) )
               Class[k] = statics[k]
-            
+
             Class.Super = Super
-            
+
             Class.create = function(){
                 var args = arguments
                 function F(){
                     return invoke(Class, args, this)
                 }
                 F.prototype = Class.prototype
-                
+
                 return new F
             }
-            
+
             Class.extend = function(){
                 return invoke(klass, [Class].concat(slice(arguments)))
             }
-            
+
             Class.isImplementedBy = function(){
                 var k, i = 0, l = arguments.length
                   , prototype
-                
+
                 for ( ; i < l; i++ ) {
                     prototype = typeof arguments[i] == "function" ? arguments[i].prototype
                               : arguments[i] ? arguments[i] : {}
-                  
+
                   for ( k in Class.prototype )
                     if ( k != "constructor" && prototype[k] !== Class.prototype[k] )
                       return false
                 }
-                
+
                 return true
             }
-            
+
             Class.implementsOn = function(){
                 var k, i = 0, l = arguments.length
                   , prototype
-                
+
                 for ( ; i < l; i++ ) {
                     prototype = typeof arguments[i] == "function" ? arguments[i].prototype
                               : arguments[i] ? arguments[i] : {}
-                    
+
                     for ( k in Class.prototype ) if ( k !== "constructor" )
                       prototype[k] = Class.prototype[k]
                 }
-                
+
             }
-            
+
             return Class
         }
       , mixin = klass.mixin = function(){
@@ -365,16 +365,16 @@
               , k, i = 0, l = args.length
               , prototype = {}
               , superPrototype
-            
+
             for ( ; i < l; i++ ) {
                 superPrototype = typeof args[i] == "function" ? args[i].prototype
                       : args[i] ? args[i] : {}
-                
+
                 for ( k in superPrototype )
                   if ( prototype[k] !== superPrototype[k] && superPrototype[k] !== Object.prototype[k] )
                     prototype[k] = superPrototype[k]
             }
-            
+
             delete prototype.constructor
             return prototype
         }
@@ -922,7 +922,7 @@
               var opt_keys = !!arguments[1]
                 , keys = enumerate(arguments[0])
                 , i = 0, l = keys.length
-              
+
               this.__pointer__ = -1
               this.__range__ = []
 
@@ -961,7 +961,7 @@
                       if ( assignments.length )
                         cache[str].assignments = assignments
                     }
-                    
+
                   return cache[str]
               }
 
@@ -970,7 +970,7 @@
                   i = 0
                   l = (rule.assignments||[]).length
                   match = path.match( rule )
-                  
+
                   if ( !match )
                     return false
 
@@ -979,7 +979,7 @@
 
                   for ( res = {}; i < l; i++ )
                     res[rule.assignments[i]] = match[i+1]
-                  
+
                   return res
               }
           }( {} )
@@ -1072,7 +1072,7 @@
 
                                       if ( ++i >= l )
                                         _next = next
-                                      
+
                                       rv = invoke(handler[i].handleRoute||handler[i], function(o, i, l){
                                                 o = { $req: route, $res: _hit, $args: args.slice(0), $next: _next, 0: _hit }
                                                 for ( i = 0, l = args.length; i < l; i++ )
@@ -1192,11 +1192,11 @@
 
                   this.emit("change>"+key, value, ov)
                   this.emit("change", key, value, ov)
-                  
+
                   if ( this.__modelState__ & INIT ) {
                     if ( indexOf( (this.__lastUpdatedKeys__ = this.__lastUpdatedKeys__ || []), key ) == -1 )
                       this.__lastUpdatedKeys__.push(key)
-                    
+
                     clearTimeout(this.__lastUpdateTimer__)
                     this.__lastUpdateTimer__ = setTimeout(function(model){
                         return function(){
@@ -1204,7 +1204,7 @@
                         }
                     }(this), 4)
                   }
-                  
+
                   this.initModel()
               }
             , getItem: function(){
@@ -1212,7 +1212,7 @@
                     , getHandler = isThenable(args[args.length-1]) ? args.pop() : null
                     , output
                     , keys, i, l, hits
-                  
+
                   this.__data__ = this.__data__ || {}
 
                   if ( isArray(args[0]) )
@@ -1222,16 +1222,16 @@
 
                   for ( hits = [], i = 0, l = keys.length; i < l; i++ )
                     hits[i] = this.__data__[ (typeof keys[i] == "string" ? keys[i] : toType(keys[i])) ]
-                  
+
                   if ( getHandler ) {
                     output = new Promise(function(resolve){
                         invoke(resolve, hits)
                     })
                     output.then(getHandler)
-                    
+
                     return output
                   }
-                  
+
                   return hits.length > 1 ? hits : hits[0]
               }
             , removeItem: function(){
@@ -1322,18 +1322,18 @@
                       adds = [arguments[0]]
 
                   for ( i = 0, l = adds.length; i < l; i++ ) {
-                    
+
                     m = Model.isImplementedBy(adds[i]) && indexOf( this.__models__, adds[i]) == -1 ? adds[i]
                       : isObject(adds[i]) && new this.__useModel__(adds[i])
-                    
+
                     if ( m )
                       this.__models__.push(m)
-                    
+
                     m.on("update", function(collection){
                         return function onupdate(keys){
                             if ( indexOf(collection.__models__, adds[i]) == -1 )
                               return m.off("update", onupdate)
-                            
+
                             collection.emit("update", m, keys)
                         }
                     }( this ))
@@ -1442,7 +1442,7 @@
 
                   if ( exist = document.cookie.match(name+"=([^;]*)"), exist )
                     this.setItem(exist[1])
-                    
+
                   if ( cookieHandler )
                     (function(cookie){
                           function set(){ return invoke(cookie.setItem, arguments, cookie) }
@@ -1450,7 +1450,7 @@
 
                           invoke(cookieHandler, { $set: set, $get: get, 0: set, 1: get, length: 2 })
                     }( this ))
-                  
+
                   this.initModel()
                   this.on("update", function(cookie){
                       return function(){ cookie.sync() }
@@ -1462,7 +1462,7 @@
               }
             , clear: function(){
                   var k
-                  
+
                   for ( k in (this.__data__= this.__data||{}) ) if ( this.__data__.hasOwnProperty(k) )
                     this.removeItem(k)
               }
@@ -1477,7 +1477,7 @@
               }
           }
       })
-    
+
     , Store = ns.Store = klass({})
 
     , Service = ns.Service = klass(function(Super, statics){
@@ -1497,10 +1497,10 @@
             , initService: function(){
                   var args = slice(arguments)
                     , servDict
-                  
+
                   this.__defaultRequestHandler__ = isThenable(args[args.length-1]) ? args.pop() : null
                   servDict = isObject(args[args.length-1]) ? args.pop() : { url: args.pop() }
-                  
+
                   this.__serviceType__ = typeof servDict.type == "string" ? servDict.type : "GET"
                   this.__serviceUrl__ = typeof servDict.url == "string" ? servDict.url : toType(servDict.url)
                   this.__serviceSync__ = !!servDict.sync
@@ -1514,13 +1514,13 @@
             , requestType: function(){
                   if ( !arguments.length )
                     return this.__serviceType__ = this.__serviceType__ || "GET"
-                  
+
                   this.__serviceType__ = typeof arguments[0] == "string" ? arguments[0] : "GET"
               }
             , requestUrl: function(){
                   if ( !arguments.length )
                     return this.__serviceUrl__ = this.__serviceUrl__ || ""
-                  
+
                   this.__serviceUrl__ = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
               }
             , requestAsync: function(v){
@@ -1530,46 +1530,46 @@
               }
             , requestCredentials: function(){
                   var user, password
-                  
+
                   if ( !arguments.length ) {
                     user = this.__serviceUser__ = this.__serviceUser__ || null
                     password = this._servicePassword__ = this.__servicePassword || null
                     return { user: user, password: password }
                   }
-                  
+
                   this.__serviceUser__ = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
                   this.__servicePassword__ = typeof arguments[1] == "string" ? arguments[1] : toType(arguments[1])
               }
             , requestTimeout: function(){
                   var buff
-                  
+
                   if ( !arguments.length )
                     return this.__serviceTimeout__ = this.__serviceTimeout__ || 0
-                  
+
                   this.__serviceTimeout__ = typeof arguments[0] == "number" ? arguments[0] : (buff = parseInt(arguments[0], 10), !isNaN(buff) ? buff : 0)
               }
             , requestHeaders: function(){
                   if ( !arguments.length )
                     return this.__serviceRequestHeaders__ = this.__serviceRequestHeaders__ || {}
-                  
+
                   this.__serviceRequestHeader__ = isObject(arguments[0]) ? arguments[0] : {}
               }
             , requestMimeType: function(){
                   if ( !arguments.length )
                     return this.__serviceOverrideMimeType__ = this.__serviceOverrideMimeType__ || null
-                  
+
                   this.__serviceOverrideMimeType__ = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
               }
             , requestResponseType: function(){
                   if ( !arguments.length )
                     return this.__serviceResponseType__ = this.__serviceResponseType__ || null
-                  
+
                   this.__serviceResponseType__ = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
               }
             , requestDefaultHandler: function(){
                   if ( !arguments.length )
                     return this.__serviceDefaultRequestHandler__ || statics.defaultRequestHandler
-                  
+
                   if ( isThenable(arguments[0]) )
                     this.__serviceDefaultRequestHandler__ = arguments[0]
               }
@@ -1584,7 +1584,7 @@
                           if ( requestBody )
                             url = url+"?"+requestBody
                           requestBody = null
-                          
+
                           return url
                       }( this.__serviceUrl__ )
                     , requestHeaders = isObject(args[0]) ? args.shift() : {}
@@ -1596,7 +1596,7 @@
                               if ( service.__ongoingxhrrequest__ )
                                 service.__ongoingxhrrequest__.abort()
                               service.__ongoingxhrrequest__ = request
-                                
+
                               request.open(service.__serviceType__, requestUrl, !service.__sync__, service.__servuceUser__, service.__servicePassword__)
                               request.timeout = service.__timeout__
 
@@ -1774,7 +1774,7 @@
                           while ( hit = (rtemplatevars.exec(rawValue)||[])[1], hit )
                             if ( indexOf(vars, hit) == -1 )
                               vars.push(hit)
-                          
+
                           if ( vars.length )
                             onupdate = function(keys){
                                 var i, l, hit, str = rawValue, _val, rval
@@ -1788,11 +1788,11 @@
                                 if ( hit )
                                   for ( i = 0, l = vars.length; i < l; i++ ) {
                                     _val =  model.getItem(vars[i])
-                                    
+
                                     if ( typeof _val !== "undefined" && _val !== null )
                                       str = str.replace("@"+vars[i]+"@", _val)
                                   }
-                                
+
                                 write(node, rawAttr, str)
 
                                 model.once("update", onupdate)
@@ -1856,7 +1856,7 @@
                                 if ( hit )
                                   for ( i = 0, l = vars.length; i < l; i++ ) {
                                     _val =  model.getItem(vars[i])
-                                    
+
                                     if ( typeof _val !== "undefined" && _val !== null )
                                       str = str.replace("@"+vars[i]+"@", _val)
                                   }
@@ -1886,7 +1886,7 @@
               }
             , read = function(stream, input, output){
                   var next, operand
-                  
+
                   try {
                     next = stream.next()
                   } catch(e){
@@ -2070,7 +2070,7 @@
               }
           }
       }()
-    
+
     , requestAnimationFrame = ns.requestAnimationFrame = function(){
           return "requestAnimationFrame" in root ? function(){ invoke(root.requestAnimationFrame, arguments) }
                : "mozRequestAnimationFrame" in root ? function(){ invoke(root.mozRequestAnimationFrame, arguments) }
@@ -2082,7 +2082,7 @@
                     }, 4)
                  }
       }()
-    
+
     , createCustomEvent = function(){
           switch ( CUSTOM_EVENTS_COMPAT ) {
               case 8: return function(type, dict){
@@ -2095,7 +2095,7 @@
                   type = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
                   dict = isObject(arguments[1]) ? arguments[1] : {}
                   detail = isObject(dict.detail) ? dict.detail : {}
-                  
+
                   event.initCustomEvent(type, !!dict.bubbles, !!dict.cancelable, detail)
                   return event
               }
@@ -2104,7 +2104,7 @@
                   type = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
                   dict = isObject(arguments[1]) ? arguments[1] : {}
                   detail = isObject(dict.detail) ? dict.detail : {}
-                  
+
                   event.initEvent(type, !!dict.bubbles, !!dict.cancelable, detail)
                   return event
               }
@@ -2113,13 +2113,13 @@
                   type = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
                   dict = isObject(arguments[1]) ? arguments[1] : {}
                   detail = isObject(dict.detail) ? dict.detail : {}
-                  
+
                   event.type = type
                   event.propertyName = "__on"+type
                   event.cancelable = !dict.bubbles
                   event.returnValue = !!dict.cancelable
                   event.detaul = detail
-                  
+
                   return event
               }
               default: throw new Error
@@ -2132,12 +2132,12 @@
                                    return domReady.then(function(nodes){
                                       invoke(dispatchCustomEvent, [nodes.body, event])
                                    }), undefined
-                                 
+
                                  now = node[event.propertyName]
-                                 
+
                                  setTimeout(function(){
                                      then = node[event.propertyName]
-                                     
+
                                      if ( now === then )
                                        node[event.propertyName] = (+node[event.propertyName]) +1
                                  }, 4)
@@ -2150,21 +2150,21 @@
             , "button", "buttons"
             , "touches"
           ]
-          
+
           function redispatchEvent(e, node, type, ne, i, l){
               ne = createCustomEvent(type, { bubbles: e.bubbdles, cancelable: e.cancelable, detail: e.detail })
-              
+
               for ( i = 0, l = toCloneProps.length; i < l; i++ )
                 ne[toCloneProps[i]] = e[toCloneProps[i]]
-              
+
               ne.preventDefault = function(){ e.preventDefault() }
               ne.stopPropagation = function(){ e.stopPropagation() }
               ne.stopImmediatePropagation = function(){ e.stopImmediatePropagation() }
               ne.originalEvent = e
-              
+
               dispatchCustomEvent(node, ne)
           }
-          
+
           return {
               pointerdown: function(node){
                   node.__pointerdownproxy__ = node.__pointerdownproxy__ || function(e){ redispatchEvent(e, node, "pointerdown") }
@@ -2196,7 +2196,7 @@
               }
           }
       }()
-    
+
     , addEventListener = ns.addEventListener = function(AEL){
           return function(node, events, eventHandler, capture){
               var events = events.split(" ")
@@ -2204,16 +2204,16 @@
                 , hooked
 
               for ( ; i < l; i++ ) {
-                  
+
                   if ( eventListenerHooks.hasOwnProperty(events[i]) )
                     invoke(eventListenerHooks[events[i]], [node]),
                     hooked = true
-                  
+
                   if ( hooked && !AEL && node === root )
                     return domReady(function(nodes){
                         invoke(addEventListener, [nodes.body, events.join(" "), eventHandler])
                     }), undefined
-                  
+
                   AEL ? node.addEventListener(events[i], eventHandler, !!capture)
                       : node.attachEvent(function(i){
                             return "on" + ( hooked?"propertychange":events[i] )
@@ -2264,14 +2264,14 @@
           return function(node, events, eventHandler, capture){
               var events = events.split(" ")
                 , i = 0, l = events.length
-              
+
               for ( ; i < l; i++ ) {
-                  
+
                   if ( !REL && eventListenerHooks.hasOwnProperty(events[i]) && node === root )
                       return domReady(function(nodes){
                           invoke(removeEventListener, [nodes.body, events.join(" "), eventHandler])
                       }), undefined
-                  
+
                   REL ? node.removeEventListener(events[i], eventHandler, !!capture)
                       : node.detachEvent("on"+events[i], function(){
                             var fn = typeof eventHandler.handleEvent == "function" ? eventHandler.handleEvent : eventHandler
@@ -2292,7 +2292,7 @@
               if ( ready )
                 return
               ready = 1
-              
+
               docElt = document.documentElement || document.getElementByTagName("html")[0]
               docHead = document.head || document.getElementsByTagName("head")[0]
               docBody = document.body || document.getElementsByTagName("body")[0]
@@ -2304,7 +2304,7 @@
                 , title: function(title){
                       if ( title )
                         return title
-                      
+
                       title = document.createElement("title")
                       docHead.appendChild(title)
                       return title
@@ -2313,7 +2313,7 @@
                       for ( i = 0, l = metas.length; i < l; i++ )
                         if ( metas[i].name == "viewport" )
                           return metas[i]
-                      
+
                       meta = document.createElement("meta")
                       meta.name = "viewport"
                       meta.content = ""
@@ -2348,68 +2348,68 @@
               var args = slice(arguments)
                 , parsedTemplate, k, i, l
                 , viewHandler, domEvents
-              
+
               viewHandler = isInvocable(args[args.length-1]) ? args.pop() : null
-              
+
               if ( Service.isImplementedBy(args[args.length-1]) )
                 return function(view, service){
                     return view.__viewReady__ = service.request({
                         handleResolve: function(data){
                             args.push(data)
-                            
+
                             if ( viewHandler )
                               args.push(viewHandler)
-                            
+
                             invoke(view.initView, args, view)
                         }
                       , handleReject: function(){
                             args.push({})
-                            
+
                             if ( viewHandler )
                               args.push(viewHandler)
-                            
+
                             invoke(view.initView, args, view)
                         }
                     })
                 }( this, args.pop() )
               this.__viewReady__ = new Promise(function(resolve){ resolve() })
-              
+
               this.__data__ = args[args.length-1] && Model.isImplementedBy(args[args.length-1]) ? args.pop()
                             : isObject(args[args.length-1]) ? new this.__useModel__(args.pop())
                             : new this.__useModel__
-              
+
               this.__template__ = typeof args[0] == "string" ? trim(args.shift())
                                 : isObject(args[0]) ? function(templateDict){
                                       domEvents = isObject(templateDict.domEvents) ? templateDict.domEvents : null
                                       return typeof templateDict.template == "string" ? templateDict.template : ""
                                   }( args.shift() )
                                 : ""
-              
+
               parsedTemplate = htmlExpression.parse(this.__template__, this.__data__)
-              
+
               this.__fragment__ = parsedTemplate.tree
               this.__elements__ = parsedTemplate.assignments
-              
+
               this.__elements__.root = this.__elements__.root || []
               for ( i = 0, l = this.__fragment__.childNodes.length; i < l; i++ )
                 if ( indexOf(this.__elements__.root, this.__fragment__.childNodes[i]) == -1 )
                   this.__elements__.root.push(this.__fragment__.childNodes[i])
-              
+
               if ( this.__defaultDOMEvents__ )
                 this.addDOMEventListener(this.__defaultDOMEvents__)
-              
+
               if ( domEvents )
                 this.addDOMEventListener(domEvents)
-              
+
               this.__viewState__ = INIT
-              
+
               if ( viewHandler )
                 (function(view){
                     function html(){ return invoke(view.html, arguments, view) }
                     function recover(){ return invoke(view.recover, arguments, view) }
-              
+
                     var model = view.__data__
-              
+
                     invoke(viewHandler, { $html: html, $recover: recover, $model: model, 0: html, 1: recover, 2: model, length: 3 })
                 }(this))
           }
@@ -2427,20 +2427,20 @@
                   return this.__viewReady__.then(function(view, args){
                       return function(){ invoke(view.html, args, view) }
                   }(this, arguments))
-              
+
               this.__fragment__ = this.__fragment__ || document.createDocumentFragment()
-              
+
               if ( !this.__fragment__.childNodes.length )
                 this.recover()
-              
+
               if ( isInvocable(arguments[0]) )
                 invoke(arguments[0], [this.__fragment__])
-              
+
               return this.__fragment__
           }
         , recover: function(){
               var i, l
-              
+
               this.__fragment__ = this.__fragment__ || document.createDocumentFragment()
 
               for ( i = 0, l = this.__elements__.root; i < l; i++ )
@@ -2566,7 +2566,7 @@
                           function rule(){
                               return invoke(sheet.rule, arguments, sheet)
                           }
-                          
+
                           function rules(){
                               return invoke(sheet.rules, arguments, sheet)
                           }
@@ -2614,12 +2614,12 @@
 
                   if ( ruleHandler )
                      output.then(ruleHandler)
-                  
+
                   rfn = function(){
                       return output.then(isThenable(arguments[0]) ? arguments[0] : function(){})
                   }
                   rfn.__cssRulesPromise__ = output
-                  
+
                   return rfn
               }
             , rules: function(){
@@ -2628,7 +2628,7 @@
                     , rules = []
                     , group
                     , i = 0, l = arguments.length-1
-                  
+
                   for ( ; i < l; i++ )
                     if ( arguments[i].hasOwnProperty("__cssRulesPromise__"))
                       rules[i] = new Promise(function(rule){
@@ -2640,12 +2640,12 @@
                       }( arguments[i] ))
                     else
                       rules[i] = function(){ return new TypeError() }
-                  
+
                   group = Promise.group(rules)()
-                  
+
                   if ( rulesHandler )
                     group.then(rulesHandler)
-                  
+
                   return function(){
                       return group.then(isThenable(arguments[0])?arguments[0]:function(){})
                   }
@@ -2659,7 +2659,7 @@
                             } catch(e){ }
                         }
                     }(arguments[0]))
-                  
+
               }
             , disable: function(){
                   return this.__stylesheetReady__.then(function(sheet){
@@ -2821,9 +2821,9 @@
                   return invoke(uuid.uuid, [], uuid)
               }
           }( new Uuid({ length: 10, radix:16, map: { 0: "s", 1: "f", 2: "x", 3: "-" } }) )
-          
+
           statics.fxTimer = 12
-          
+
           cssProperties = COMPUTED_STYLE_COMPAT ? root.getComputedStyle(document.createElement("div")) : document.documentElement.currentStyle
 
           return {
@@ -2869,16 +2869,16 @@
             , animate: function(){
                   var oargs = arguments
                     , args = slice(arguments)
-                    
+
                     , transitionHandler = isThenable(args[args.length-1]) ? args.pop() : null
                     , props = isObject(args[args.length-1]) ? args.pop() : {}
                     , node = args[0] && args[0].nodeType == 1 && args[0].parentNode && args[0].parentNode.nodeType == 1 ? args.shift() : function(){ throw new Error }()
-                    
+
                     , transitionId = this.__guid__ + sleipnir.Uuid.uuid(6, 16)
                     , animating = []
                     , output
                     , k, i, l
-                  
+
                   if ( !CSS_TRANSITION_COMPAT )
                     output = new Promise(function(transition, shim){
                         return function(resolve, reject){ invoke(shim||defaultdefaultTransitionShim, { $resolve: resolve, $reject: reject, 0: node, 1: props, 2: resolve, 3: reject, length: 4 }) }
@@ -2889,12 +2889,12 @@
                             function end(retry){
                                 if ( VISIBILITY_COMPAT & 1 ) removeEventListener(document, VISIBILITY_CHANGE_EVENT, onvisibilitychange, true)
                                 removeEventListener(node, CSS_TRANSITIONEND_EVENT, ontransitionend, true)
-                                
+
                                 if ( node.dataset.sleipfxtransitionid === transitionId ) {
                                     node.className.replace(" "+transition.__guid__, "")
                                     delete node.dataset.sleipfxtransitionid
                                     node.removeAttribute("data-sleipfxtransitionid")
-                                    
+
                                     if ( retry )
                                       requestAnimationFrame(function(){
                                           invoke(transition.animate, [node, props], transition).then(function(){ resolve() }, function(){ reject() })
@@ -2903,31 +2903,31 @@
                                       resolve()
                                 } else reject()
                             }
-                            
+
                             function onvisibilitychange(){
                                 if ( document[VISIBILITY_HIDDEN_PROPERTY] )
                                   return
-                                
+
                                 end(true)
                             }
-                            
+
                             function ontransitionend(e, idx){
                                 if ( e.target !== node )
                                   return
-                                
+
                                 if ( idx = indexOf(animating, e.propertyName), idx != -1 )
                                   animating.splice(idx, 1)
-                                  
+
                                 if ( !animating.length || node.dataset.sleipfxtransitionid !== transitionId )
                                   end()
                             }
-                            
+
                             node.dataset.sleipfxtransitionid = transitionId
-                            
+
                             domReady.then(function(nodes){
                                 if ( !nodes.body.contains(node) )
                                   return reject()
-                                
+
                                 for ( k in props ) if ( props.hasOwnProperty(k) ) {
                                   if ( indexOf(transition.__properties__, k ) != -1 )
                                     (function( k, prop, clone, computedStyles, cloneComputedStyles, curr, next ){
@@ -2935,35 +2935,35 @@
                                               delete props[k]
                                               return
                                           }
-                                          
+
                                           clone.className.replace(" "+transition.__guid__, "")
                                           clone.style.setProperty(k, prop)
-                                          
+
                                           curr = computedStyles.getPropertyValue(k)
                                           node.parentNode.insertBefore(clone, node)
                                           cloneComputedStyles = root.getComputedStyle(clone)
                                           next = cloneComputedStyles.getPropertyValue(k)
-                                          
+
                                           clone.parentNode.removeChild(clone)
-                                          
+
                                           if (  curr !== next )
                                             props[k] = next,
                                             animating.push(k)
-                                          
+
                                     }( k, props[k], node.cloneNode(true), root.getComputedStyle(node) ))
                                 }
-                                
+
                                 requestAnimationFrame(function(){
                                     if ( node.className.indexOf(transition.__guid__) == -1 )
                                       node.className += " "+transition.__guid__
-                                    
+
                                     if ( VISIBILITY_COMPAT & 1 ) addEventListener(document, VISIBILITY_CHANGE_EVENT, onvisibilitychange, true)
                                     addEventListener(node, CSS_TRANSITIONEND_EVENT, ontransitionend, true)
-                                    
+
                                     requestAnimationFrame(function(){
                                         for ( k in props ) if ( props.hasOwnProperty(k) )
                                           node.style.setProperty(k, props[k])
-                                        
+
                                         if ( !animating.length )
                                           end()
                                     })
@@ -2971,12 +2971,12 @@
                             })
                         }
                     }( this ))
-                  
+
                   if ( this.__defaultTransitionHandler__ )
                     output = output.then(this.__defaultTransitionHandler__)
                   if ( transitionHandler )
                     output.then(transitionHandler)
-                  
+
                   return output
               }
           }

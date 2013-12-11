@@ -1,6 +1,6 @@
 {
     "name": "sleipnirJS"
-  , "version": "0.6.0-alpha"
+  , "version": "0.6.0-ax"
   , "main": "build/sleipnir.min.js"
   , "repository": { "type": "git", "url": "https://github.com/grid23/sleipnirJS.git" }
   , "authors": ["Benjamin Moulin"]
