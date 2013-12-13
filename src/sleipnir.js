@@ -2351,25 +2351,25 @@
 
               viewHandler = isInvocable(args[args.length-1]) ? args.pop() : null
 
-              if ( Service.isImplementedBy(args[args.length-1]) )
-                return function(view, service){
-                    return view.__viewReady__ = service.request({
+              if ( Promise.isImplementedBy(args[args.length-1]) )
+                return function(view, promise){
+                    return view.__viewReady = promise.then({
                         handleResolve: function(data){
-                            args.push(data)
-
-                            if ( viewHandler )
-                              args.push(viewHandler)
-
-                            invoke(view.initView, args, view)
-                        }
-                      , handleReject: function(){
-                            args.push({})
-
-                            if ( viewHandler )
-                              args.push(viewHandler)
-
-                            invoke(view.initView, args, view)
-                        }
+                              args.push(data)
+                        
+                              if ( viewHandler )
+                                args.push(viewHandler)
+                        
+                              invoke(view.initView, args, view)
+                          }
+                        , handleReject: function(){
+                              args.push({})
+                        
+                              if ( viewHandler )
+                                args.push(viewHandler)
+                        
+                              invoke(view.initView, args, view)
+                          }
                     })
                 }( this, args.pop() )
               this.__viewReady__ = new Promise(function(resolve){ resolve() })
@@ -2440,11 +2440,12 @@
           }
         , recover: function(){
               var i, l
-
+              
               this.__fragment__ = this.__fragment__ || document.createDocumentFragment()
-
-              for ( i = 0, l = this.__elements__.root; i < l; i++ )
-                this.__fragment__.appendChild(this.__elements__.root[i])
+              
+              if ( !this.__fragment__.childNodes.length )
+                for ( i = 0, l = this.__elements__.root.length; i < l; i++ )
+                  this.__fragment__.appendChild(this.__elements__.root[i])
           }
         , clone: function(){
               return this.__viewState__ & INIT ? new this.constructor(this.__template__, this.__data__) : new Error
@@ -2638,6 +2639,14 @@
                               })
                           }
                       }( arguments[i] ))
+                    else if ( typeof arguments[i] == "string" )
+                      rules[i] = new Promise(function(rule){
+                          return function(resolve){
+                              return rule(function(cssRules){
+                                  resolve(cssRules)
+                              })
+                          }
+                      }( this.rule(arguments[i]) ))
                     else
                       rules[i] = function(){ return new TypeError() }
 
@@ -3004,4 +3013,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a22" }));
+}(window, { version: "ES3-0.6.0a23" }));
