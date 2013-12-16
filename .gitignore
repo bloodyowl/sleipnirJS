@@ -27,6 +27,7 @@ dev/
 *.tar
 *.zip
 *.svn
+*.chproj
 
 
 # Logs and databases #
