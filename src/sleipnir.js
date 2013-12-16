@@ -1051,7 +1051,9 @@
                                 , i, l
 
                               if ( !isArray(handler) ) {
-                                hits++
+                                if ( ite[0] !== "*" )
+                                  hits++
+                                
                                 _next = next
                                 rv = invoke(handler.handleRoute||handler, function(o, i, l){
                                           o = { $req: route, $res: _hit, $args: args.slice(0), $next: _next, 0: _hit }
@@ -1068,7 +1070,8 @@
                                   l = handler.length -1
 
                                   _next = function(){
-                                      hits++
+                                      if ( ite[0] !== "*" )
+                                        hits++
 
                                       if ( ++i >= l )
                                         _next = next
@@ -1498,7 +1501,7 @@
                   var args = slice(arguments)
                     , servDict
 
-                  this.__defaultRequestHandler__ = isThenable(args[args.length-1]) ? args.pop() : null
+                  this.__serviceDefaultRequestHandler__ = isThenable(args[args.length-1]) ? args.pop() : null
                   servDict = isObject(args[args.length-1]) ? args.pop() : { url: args.pop() }
 
                   this.__serviceType__ = typeof servDict.type == "string" ? servDict.type : "GET"
@@ -3013,4 +3016,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a23" }));
+}(window, { version: "ES3-0.6.0a24" }));
