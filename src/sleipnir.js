@@ -2353,9 +2353,9 @@
                 , viewHandler, domEvents
 
               viewHandler = isInvocable(args[args.length-1]) ? args.pop() : null
-
+              
               if ( Promise.isImplementedBy(args[args.length-1]) )
-                return function(view, promise){
+                return this.__viewReady__ = function(view, promise){
                     return view.__viewReady = promise.then({
                         handleResolve: function(data){
                               args.push(data)
@@ -3016,4 +3016,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a24" }));
+}(window, { version: "ES3-0.6.0a25" }));
