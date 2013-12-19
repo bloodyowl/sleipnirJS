@@ -1240,7 +1240,7 @@
             , removeItem: function(){
                   var key, hit, ov
 
-                  if ( arguments.length )
+                  if ( arguments.length > 1 )
                     return function(model, keys, i, l){
                         for ( i = 0, l = keys.length; i < l; i++ )
                           model.removeItem(keys[i])
@@ -3016,4 +3016,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a25" }));
+}(window, { version: "ES3-0.6.0a26" }));
