@@ -1466,7 +1466,7 @@
             , clear: function(){
                   var k
 
-                  for ( k in (this.__data__= this.__data||{}) ) if ( this.__data__.hasOwnProperty(k) )
+                  for ( k in (this.__data__= this.__data__||{}) ) if ( this.__data__.hasOwnProperty(k) )
                     this.removeItem(k)
               }
           }
