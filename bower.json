@@ -3,6 +3,6 @@
   , "version": "0.6.0-ax"
   , "main": "./sleipnir.js"
   , "repository": { "type": "git", "url": "https://github.com/grid23/sleipnirJS.git" }
-  , "authors": ["Benjamin Moulin"]
+  , "author": "Benjamin Moulin <hello@grid23.net>"
   , "licence": "WTFPL2"
 }
