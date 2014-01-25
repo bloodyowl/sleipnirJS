@@ -404,7 +404,6 @@
             return G
         }
 
-
       , Invoker = ns.Invoker = klass(function(Super, statics){
             statics.invoke = invoke
 
@@ -1418,6 +1417,24 @@
           }
       })
 
+
+
+    , cssHooks = cssHooks = function(cssProperties, hooks){
+          function check(p){
+              return COMPUTED_STYLE_COMPAT ? cssProperties.getPropertyValue(p) : cssProperties[p]) != void 0
+          }
+          
+          hooks = {}
+          
+          void function(w3c, webkit){
+              if ( !check(w3c) && check(webkit) )
+                hooks[p] = function(v){
+                    return [{ key: webkit, value: v }]
+                }
+          }("transform", "-webkit-transform")
+          
+          return hooks
+      }( document.documentElement.style )
 
     , Cookie = ns.Cookie = klass(Model, function(Super, statics, defaultLifespan){
           defaultLifespan = 15552000000
@@ -2819,7 +2836,6 @@
           }
       })
 
-
     , Transition = ns.Transition = klass(function(Super, statics, cssProperties){
           function defaultTransitionShim(node, props, resolve, k){
               for ( k in props ) if ( props.hasOwnProperty(k) )
@@ -2838,8 +2854,6 @@
               }
           }( new Uuid({ length: 10, radix:16, map: { 0: "s", 1: "f", 2: "x", 3: "-" } }) )
 
-          statics.fxTimer = 12
-
           cssProperties = COMPUTED_STYLE_COMPAT ? root.getComputedStyle(document.createElement("div")) : document.documentElement.currentStyle
 
           return {
@@ -2852,9 +2866,25 @@
 
                   transDict = args.length > 1 && isObject(args[args.length-1]) ? args.pop() : {}
 
-                  this.__properties__ = function(transition, aprops, rprops, k, aCssText, rCssText){
+                  this.__properties__ = function(transition, aprops, rprops, k, aCssText, rCssText, keys){
                       rCssText = []
-
+                      
+                      keys = enumerate(aprops)
+                      while ( keys.length )
+                        void function(k, hooks){
+                            if ( !cssHooks.hasOwnProperty(k) )
+                              return
+                            
+                            delete aprops[k]
+                            
+                            hooks = cssHooks[k](aprops[k])
+                            while ( hooks.length )
+                              void function(hook){
+                                  if ( !aprops[hook.key] )
+                                    aprops[hook.key] = hook.value
+                              }( hooks.shift() )
+                        }( keys.shift() )
+                      
                       for ( k in aprops ) if ( aprops.hasOwnProperty(k) )
                         if ( (COMPUTED_STYLE_COMPAT ? cssProperties.getPropertyValue(k) : cssProperties[k]) != void 0 ) {
                           rprops.push(k)
@@ -2906,9 +2936,10 @@
                                 if ( VISIBILITY_COMPAT & 1 ) removeEventListener(document, VISIBILITY_CHANGE_EVENT, onvisibilitychange, true)
                                 removeEventListener(node, CSS_TRANSITIONEND_EVENT, ontransitionend, true)
 
-                                if ( node.dataset.sleipfxtransitionid === transitionId ) {
+                                //if ( node.dataset.sleipfxtransitionid === transitionId ) {
+                                if ( node.getAttribute("data-sleipfxtransitionid") === transitionId )
                                     node.className.replace(" "+transition.__guid__, "")
-                                    delete node.dataset.sleipfxtransitionid
+                                    //delete node.dataset.sleipfxtransitionid
                                     node.removeAttribute("data-sleipfxtransitionid")
 
                                     if ( retry )
@@ -2934,16 +2965,34 @@
                                 if ( idx = indexOf(animating, e.propertyName), idx != -1 )
                                   animating.splice(idx, 1)
 
-                                if ( !animating.length || node.dataset.sleipfxtransitionid !== transitionId )
+                                //if ( !animating.length || node.dataset.sleipfxtransitionid !== transitionId )
+                                if ( !animating.length || node.getAttribute("data-sleipfxtransitionid") !== transitionId )
                                   end()
                             }
 
-                            node.dataset.sleipfxtransitionid = transitionId
-
-                            domReady.then(function(nodes){
+                            //node.dataset.sleipfxtransitionid = transitionId
+                            node.setAttribute("data-sleipfxtransitionid", transitionid)
+                            
+                            domReady.then(function(nodes, keys){
                                 if ( !nodes.body.contains(node) )
                                   return reject()
-
+                                
+                                keys = enumerate(props)
+                                while ( keys.length )
+                                  void function(k, hooks){
+                                      if ( !cssHooks.hasOwnProperty(k) )
+                                        return
+                                      
+                                      delete aprops[k]
+                                      
+                                      hooks = cssHooks[k](aprops[k])
+                                      while ( hooks.length )
+                                        void function(hook){
+                                            if ( !props[hook.key] )
+                                              props[hook.key] = hook.value
+                                        }( hooks.shift() )
+                                  }( keys.shift() )
+                                
                                 for ( k in props ) if ( props.hasOwnProperty(k) ) {
                                   if ( indexOf(transition.__properties__, k ) != -1 )
                                     (function( k, prop, clone, computedStyles, cloneComputedStyles, curr, next ){
@@ -3020,4 +3069,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a27" }));
+}(window, { version: "ES3-0.6.0a28" }));
