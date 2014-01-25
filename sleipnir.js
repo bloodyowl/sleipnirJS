@@ -240,7 +240,7 @@
 
                 fn = arguments[0] && typeof arguments[0].handleInvoke == "function" ? ( ctx = arguments[0], ctx.handleInvoke )
                    : typeof arguments[0] == "function" ? arguments[0]
-                   : function(){ throw new Error("sleipnir.invoke, invalid function/invokeHandler") }()
+                   : function(args){ /*console.dir(args);*/ throw new Error("sleipnir.invoke, invalid function/invokeHandler") }(arguments)
 
                 args = isArray(arguments[1]) ? arguments[1]
                      : arguments[1] && ( (!STRICT_MODE&&!!arguments[1].callee)||toType(arguments[1]) == "[object Arguments]" ) ? arguments[1]
@@ -587,19 +587,15 @@
                     throw arguments[1]
                   else if ( typeof arguments[1] == "string" )
                     throw new Error(arguments[1])
-
+                
                 if ( handlers )
-                  if ( handlers.handleEvent )
+                  if ( isInvocable(handlers.handleEvent) )
                     invoker.invoke(handlers.handleEvent, args, handlers)
-                  else if ( handlers.handleInvoke )
-                    invoker.invoke(handlers, args)
-                  else if ( typeof handlers == "function" )
+                  else if ( !isArray(handlers) )
                     invoker.invoke(handlers, args, this)
                   else for ( _arr = [].concat(handlers), i = 0, l = _arr.length; i < l; i++ )
-                    if ( _arr[i].handleEvent )
+                    if ( isInvocable(_arr[i].handleEvent) )
                       invoker.invoke(_arr[i].handleEvent, args, _arr[i])
-                    else if ( _arr[i].handleInvoke )
-                      invoker.invoke(_arr[i], args)
                     else
                       invoker.invoke(_arr[i], args, this)
             }
@@ -2073,7 +2069,7 @@
               }
           }
       }()
-
+      
     , requestAnimationFrame = ns.requestAnimationFrame = function(){
           return "requestAnimationFrame" in root ? function(){ invoke(root.requestAnimationFrame, arguments) }
                : "mozRequestAnimationFrame" in root ? function(){ invoke(root.mozRequestAnimationFrame, arguments) }
@@ -2454,8 +2450,15 @@
               return this.__viewState__ & INIT ? new this.constructor(this.__template__, this.__data__) : new Error
           }
         , element: function(){
+              if ( !this.__viewState__ )
+                return this.__viewReady__.then(function(view, args){
+                    return function(){
+                        $.invoke(view.element, args, view)
+                    }
+                }(this, arguments))
+              
               var args = slice(arguments)
-                , elementHandler = isInvocable(args[args.length-1]) ? args.pop() : function(){}
+                , elementHandler = isInvocable(args[args.length-1]) ? args.pop() : null
                 , requested = args.length > 1 ? args
                            : args.length == 1 ? [args.shift()]
                            : ["root"]
@@ -2465,9 +2468,10 @@
               for ( ; i < l; i++ )
                   requested[i] = typeof requested[i] == "string" ? requested[i] : toType(requested[i]),
                   elements[i] = this.__elements__.hasOwnProperty(requested[i]) ? this.__elements__[requested[i]].length > 1 ? this.__elements__[requested[i]] : this.__elements__[requested[i]][0] : null
-
-              invoke(elementHandler, elements)
-              return elements
+              
+              if ( elementHandler )
+                return invoke(elementHandler, elements), void 0
+              return elements.length > 1 ? elements : elements[0]
           }
         , addDOMEventListener: function(){
               var eltRef, elts, event, handler, capture, i, l
@@ -3016,4 +3020,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a26" }));
+}(window, { version: "ES3-0.6.0a27" }));
