@@ -9,7 +9,7 @@
  variables to preserve : $super, $static, $e, $resolve, $reject, $progress, $, $$, $next, $route, $root, $nodes
 */
 
-;(function(root, ns){ "use strict"
+;void function(root, ns){ "use strict"
 
     var document = root.document
       , location = document.location
@@ -226,12 +226,12 @@
             }
         }( isNative(Object.keys) )
 
-      , JSON = ns.JSON = root.JSON || (function(){
+      , JSON = ns.JSON = root.JSON || function(){
             // JSON2.JS by Douglas Crockford
            var JSON = {}
            ;(function(){"use strict";function f(t){return 10>t?"0"+t:t}function quote(t){return escapable.lastIndex=0,escapable.test(t)?'"'+t.replace(escapable,function(t){var e=meta[t];return"string"==typeof e?e:"\\u"+("0000"+t.charCodeAt(0).toString(16)).slice(-4)})+'"':'"'+t+'"'}function str(t,e){var r,n,o,f,u,p=gap,i=e[t];switch(i&&"object"==typeof i&&"function"==typeof i.toJSON&&(i=i.toJSON(t)),"function"==typeof rep&&(i=rep.call(e,t,i)),typeof i){case"string":return quote(i);case"number":return isFinite(i)?i+"":"null";case"boolean":case"null":return i+"";case"object":if(!i)return"null";if(gap+=indent,u=[],"[object Array]"===Object.prototype.toString.apply(i)){for(f=i.length,r=0;f>r;r+=1)u[r]=str(r,i)||"null";return o=0===u.length?"[]":gap?"[\n"+gap+u.join(",\n"+gap)+"\n"+p+"]":"["+u.join(",")+"]",gap=p,o}if(rep&&"object"==typeof rep)for(f=rep.length,r=0;f>r;r+=1)"string"==typeof rep[r]&&(n=rep[r],o=str(n,i),o&&u.push(quote(n)+(gap?": ":":")+o));else for(n in i)Object.prototype.hasOwnProperty.call(i,n)&&(o=str(n,i),o&&u.push(quote(n)+(gap?": ":":")+o));return o=0===u.length?"{}":gap?"{\n"+gap+u.join(",\n"+gap)+"\n"+p+"}":"{"+u.join(",")+"}",gap=p,o}}"function"!=typeof Date.prototype.toJSON&&(Date.prototype.toJSON=function(){return isFinite(this.valueOf())?this.getUTCFullYear()+"-"+f(this.getUTCMonth()+1)+"-"+f(this.getUTCDate())+"T"+f(this.getUTCHours())+":"+f(this.getUTCMinutes())+":"+f(this.getUTCSeconds())+"Z":null},String.prototype.toJSON=Number.prototype.toJSON=Boolean.prototype.toJSON=function(){return this.valueOf()});var cx=/[\u0000\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,escapable=/[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,gap,indent,meta={"\b":"\\b","	":"\\t","\n":"\\n","\f":"\\f","\r":"\\r",'"':'\\"',"\\":"\\\\"},rep;"function"!=typeof JSON.stringify&&(JSON.stringify=function(t,e,r){var n;if(gap="",indent="","number"==typeof r)for(n=0;r>n;n+=1)indent+=" ";else"string"==typeof r&&(indent=r);if(rep=e,e&&"function"!=typeof e&&("object"!=typeof e||"number"!=typeof e.length))throw Error("JSON.stringify");return str("",{"":t})}),"function"!=typeof JSON.parse&&(JSON.parse=function(text,reviver){function walk(t,e){var r,n,o=t[e];if(o&&"object"==typeof o)for(r in o)Object.prototype.hasOwnProperty.call(o,r)&&(n=walk(o,r),void 0!==n?o[r]=n:delete o[r]);return reviver.call(t,e,o)}var j;if(text+="",cx.lastIndex=0,cx.test(text)&&(text=text.replace(cx,function(t){return"\\u"+("0000"+t.charCodeAt(0).toString(16)).slice(-4)})),/^[\],:{}\s]*$/.test(text.replace(/\\(?:["\\\/bfnrt]|u[0-9a-fA-F]{4})/g,"@").replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g,"]").replace(/(?:^|:|,)(?:\s*\[)+/g,"")))return j=eval("("+text+")"),"function"==typeof reviver?walk({"":j},""):j;throw new SyntaxError("JSON.parse")})}())
            return JSON
-        }())
+        }()
 
 
       , invoke = ns.invoke = function(){
@@ -465,14 +465,14 @@
                       , keys = enumerate(pairs), i = 0, l = keys.length
 
                     for ( ; i < l; i++ )
-                      (function(pair){
+                      void function(pair){
                           var pair = unescape(pair.replace(/\+/g, "%20"))
                             , idx = pair.indexOf(this&&this.__delimiterSymbol__||delimiter)
                             , key = pair.split(this&&this.__delimiterSymbol__||delimiter, 1)
                             , value = pair.slice(idx+1)
 
                           o[key] = value
-                      }( pairs[keys[i]] ))
+                      }( pairs[keys[i]] )
 
                     return o
                 }
@@ -702,7 +702,7 @@
                                     }
 
                                 for ( ; i < l; i++ )
-                                  (function( fn, idx ){
+                                  void function( fn, idx ){
 
                                     if ( fn && typeof fn.then != "function" )
                                       new Promise(function(resolve){
@@ -735,7 +735,7 @@
                                             ondone()
                                       })
 
-                                  }( fns[i], i ))
+                                  }( fns[i], i )
 
                             }
                         }(arguments))
@@ -1380,10 +1380,10 @@
                     attributes.push(arguments[0])
 
                   for ( i = 0, l = attributes.length; i < l; i++ )
-                    (function( attr, keys, i, l ){
+                    void function( attr, keys, i, l ){
                         for ( i = 0, l = keys.length; i < l; i++ )
                           queries.push( { key: keys[i], value: attr[keys[i]] } )
-                    }( attributes[i], enumerate(attributes[i]) ))
+                    }( attributes[i], enumerate(attributes[i]) )
 
                   for ( i = 0, l = this.__models__.length; i < l; i++ )
                     if ( function(model){
@@ -1460,12 +1460,12 @@
                     this.setItem(exist[1])
 
                   if ( cookieHandler )
-                    (function(cookie){
+                    void function(cookie){
                           function set(){ return invoke(cookie.setItem, arguments, cookie) }
                           function get(){ return invoke(cookie.getItem, arguments, cookie) }
 
                           invoke(cookieHandler, { $set: set, $get: get, 0: set, 1: get, length: 2 })
-                    }( this ))
+                    }( this )
 
                   this.initModel()
                   this.on("update", function(cookie){
@@ -2420,14 +2420,14 @@
               this.__viewState__ = INIT
 
               if ( viewHandler )
-                (function(view){
+                void function(view){
                     function html(){ return invoke(view.html, arguments, view) }
                     function recover(){ return invoke(view.recover, arguments, view) }
 
                     var model = view.__data__
 
                     invoke(viewHandler, { $html: html, $recover: recover, $model: model, 0: html, 1: recover, 2: model, length: 3 })
-                }(this))
+                }(this)
           }
         , __useModel__: Model
         , useModel: function(){
@@ -2496,10 +2496,10 @@
               if ( arguments.length <= 2 && arguments[0].constructor == Object )
                 return function(view, events, capture, k, i, l){
                     for ( k in events ) if ( events.hasOwnProperty(k) )
-                      (function(eltRef, events, k){
+                      void function(eltRef, events, k){
                           for ( k in events ) if ( events.hasOwnProperty(k) )
                             view.addDOMEventListener(eltRef, k, events[k], !!capture)
-                      }(k, events[k]))
+                      }(k, events[k])
                 }(this, arguments[0], arguments[1])
 
               eltRef = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
@@ -2995,7 +2995,7 @@
                                 
                                 for ( k in props ) if ( props.hasOwnProperty(k) ) {
                                   if ( indexOf(transition.__properties__, k ) != -1 )
-                                    (function( k, prop, clone, computedStyles, cloneComputedStyles, curr, next ){
+                                    void function( k, prop, clone, computedStyles, cloneComputedStyles, curr, next ){
                                           if ( cssProperties.getPropertyValue(k) == void 0 ) {
                                               delete props[k]
                                               return
@@ -3015,7 +3015,7 @@
                                             props[k] = next,
                                             animating.push(k)
 
-                                    }( k, props[k], node.cloneNode(true), root.getComputedStyle(node) ))
+                                    }( k, props[k], node.cloneNode(true), root.getComputedStyle(node) )
                                 }
 
                                 requestAnimationFrame(function(){
@@ -3069,4 +3069,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a28" }));
+}(window, { version: "ES3-0.6.0a28" });
