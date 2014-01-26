@@ -2391,12 +2391,12 @@
               this.__viewReady__ = new Promise(function(resolve){ resolve() })
 
               this.__data__ = args[args.length-1] && Model.isImplementedBy(args[args.length-1]) ? args.pop()
-                            : isObject(args[args.length-1]) ? new this.__useModel__(args.pop())
+                            : args.length > 1 && isObject(args[args.length-1]) ? new this.__useModel__(args.pop())
                             : new this.__useModel__
-
+              
               this.__template__ = typeof args[0] == "string" ? trim(args.shift())
                                 : isObject(args[0]) ? function(templateDict){
-                                      domEvents = isObject(templateDict.domEvents) ? templateDict.domEvents : null
+                                      domEvents = isObject(templateDict.events) ? templateDict.events : null
                                       return typeof templateDict.template == "string" ? templateDict.template : ""
                                   }( args.shift() )
                                 : ""
@@ -2504,7 +2504,7 @@
 
               eltRef = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
               event = typeof arguments[1] == "string" ? arguments[1] : toType(arguments[1])
-              handler = arguments[2] && (typeof arguments[2].handleEvent == "function" || typeof arguments[2] == "function" ) ? arguments[2] : "function"
+              handler = isEventable(arguments[2]) ? arguments[2] : function(){}
               capture = !!arguments[3]
 
               for ( elts = this.__elements__[eltRef], i = 0, l = elts.length; i < l; i++ )
@@ -3069,4 +3069,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a28" });
+}(window, { version: "ES3-0.6.0a29" });
