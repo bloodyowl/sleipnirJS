@@ -1421,7 +1421,7 @@
 
     , cssHooks = cssHooks = function(cssProperties, hooks){
           function check(p){
-              return COMPUTED_STYLE_COMPAT ? cssProperties.getPropertyValue(p) : cssProperties[p]) != void 0
+              return (COMPUTED_STYLE_COMPAT ? cssProperties.getPropertyValue(p) : cssProperties[p]) != void 0
           }
           
           hooks = {}
@@ -2937,7 +2937,7 @@
                                 removeEventListener(node, CSS_TRANSITIONEND_EVENT, ontransitionend, true)
 
                                 //if ( node.dataset.sleipfxtransitionid === transitionId ) {
-                                if ( node.getAttribute("data-sleipfxtransitionid") === transitionId )
+                                if ( node.getAttribute("data-sleipfxtransitionid") === transitionId ) {
                                     node.className.replace(" "+transition.__guid__, "")
                                     //delete node.dataset.sleipfxtransitionid
                                     node.removeAttribute("data-sleipfxtransitionid")
