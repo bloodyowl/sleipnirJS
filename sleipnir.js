@@ -1428,13 +1428,13 @@
           
           void function(w3c, webkit){
               if ( !check(w3c) && check(webkit) )
-                hooks[p] = function(v){
+                hooks[w3c] = function(v){
                     return [{ key: webkit, value: v }]
                 }
           }("transform", "-webkit-transform")
           
           return hooks
-      }( document.documentElement.style )
+      }( COMPUTED_STYLE_COMPAT ? getComputedStyle(document.createElement("div")) : document.documentElement.currentStyle )
 
     , Cookie = ns.Cookie = klass(Model, function(Super, statics, defaultLifespan){
           defaultLifespan = 15552000000
@@ -2875,14 +2875,13 @@
                             if ( !cssHooks.hasOwnProperty(k) )
                               return
                             
-                            delete aprops[k]
-                            
                             hooks = cssHooks[k](aprops[k])
                             while ( hooks.length )
                               void function(hook){
                                   if ( !aprops[hook.key] )
                                     aprops[hook.key] = hook.value
                               }( hooks.shift() )
+                            delete aprops[k]
                         }( keys.shift() )
                       
                       for ( k in aprops ) if ( aprops.hasOwnProperty(k) )
@@ -2920,7 +2919,7 @@
                     , props = isObject(args[args.length-1]) ? args.pop() : {}
                     , node = args[0] && args[0].nodeType == 1 && args[0].parentNode && args[0].parentNode.nodeType == 1 ? args.shift() : function(){ throw new Error }()
 
-                    , transitionId = this.__guid__ + sleipnir.Uuid.uuid(6, 16)
+                    , transitionId = this.__guid__ + Uuid.uuid(6, 16)
                     , animating = []
                     , output
                     , k, i, l
@@ -2971,7 +2970,7 @@
                             }
 
                             //node.dataset.sleipfxtransitionid = transitionId
-                            node.setAttribute("data-sleipfxtransitionid", transitionid)
+                            node.setAttribute("data-sleipfxtransitionid", transitionId)
                             
                             domReady.then(function(nodes, keys){
                                 if ( !nodes.body.contains(node) )
@@ -2983,14 +2982,14 @@
                                       if ( !cssHooks.hasOwnProperty(k) )
                                         return
                                       
-                                      delete aprops[k]
-                                      
-                                      hooks = cssHooks[k](aprops[k])
+                                      hooks = cssHooks[k](props[k])
                                       while ( hooks.length )
                                         void function(hook){
                                             if ( !props[hook.key] )
                                               props[hook.key] = hook.value
                                         }( hooks.shift() )
+                                      
+                                      delete props[k]
                                   }( keys.shift() )
                                 
                                 for ( k in props ) if ( props.hasOwnProperty(k) ) {
@@ -3069,4 +3068,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a29" });
+}(window, { version: "ES3-0.6.0a30" });
