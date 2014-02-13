@@ -2532,7 +2532,7 @@
                     , sheetHandler = isInvocable(args[args.length-1]) ? args.pop() : null
                     , startingRules = isObject(args[args.length-1]) ? args.pop() : {}
                     , external
-                    , node = function( sheet, _node, node, blob, url ){
+                    , node = this.__node__ = function( sheet, _node, node, blob, url ){
                           if ( _node && _node.hasOwnProperty("tagName") && "link, style".indexOf(_node.tagName.toLowerCase()) != -1 )
                             return _node
 
@@ -2562,10 +2562,12 @@
                             document.createStyleSheet(),
                             node = { sheet: document.styleSheets[document.styleSheets.length-1] }
                           }
-
+                          
+                          node.id = node.id || Uuid.uuid(9, 16, {0: "S", 1: "S", 2: "-"})
+                          
                           return node
                       }( this, args.pop() )
-
+                    
                     this.__stylesheetReady__ = new Promise(function(sheet){
                         return function(resolve){
                             function wait(){
