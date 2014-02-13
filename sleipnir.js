@@ -1139,6 +1139,9 @@
               constructor: function(){
                   if ( arguments[0] )
                     this.setItem(arguments[0])
+                  
+                  if ( this.__defaults__ )
+                    this.setItem(this.__defaults__)
               }
             , __useSerializer__: Serializer
             , useSerializer: function(){
@@ -2399,6 +2402,7 @@
                                       domEvents = isObject(templateDict.events) ? templateDict.events : null
                                       return typeof templateDict.template == "string" ? templateDict.template : ""
                                   }( args.shift() )
+                                : typeof this.__template__ == "string" ? this.__template__
                                 : ""
 
               parsedTemplate = htmlExpression.parse(this.__template__, this.__data__)
@@ -3068,4 +3072,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a30" });
+}(window, { version: "ES3-0.6.0a31" });
