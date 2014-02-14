@@ -25,7 +25,7 @@
                 blob = new Blob([""], { type: "text/plain" })
                 url = URL.createObjectURL(blob)
 
-                if ( "msClose" in blob )
+                if ( "msClose" in blob ) // on ie10 (+?), blobs are treated like x-domain files, making them unwritable
                   throw new Error
             } catch(e){
                 return 0
