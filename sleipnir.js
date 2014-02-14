@@ -1422,7 +1422,7 @@
 
 
 
-    , cssHooks = cssHooks = function(cssProperties, hooks){
+    , cssHooks = ns.cssHooks = function(cssProperties, hooks){
           function check(p){
               return (COMPUTED_STYLE_COMPAT ? cssProperties.getPropertyValue(p) : cssProperties[p]) != void 0
           }
