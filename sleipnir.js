@@ -2343,7 +2343,7 @@
           }
 
           function onreadystatechange(){
-              if ( document.readyState === "complete" )
+              if ( "interactive, complete".indexOf(document.readyState) != -1 )
                 onready()
           }
 
