@@ -2102,7 +2102,7 @@
                  }
       }()
 
-    , createCustomEvent = function(){
+    , createCustomEvent = ns.createCustomEvent = function(){
           switch ( CUSTOM_EVENTS_COMPAT ) {
               case 8: return function(type, dict){
                   type = typeof arguments[0] == "string" ? arguments[0] : toType(arguments[0])
@@ -2144,7 +2144,7 @@
               default: throw new Error
           }
       }()
-    , dispatchCustomEvent = function(DE_COMPAT){
+    , dispatchCustomEvent = ns.dispatchCustomEvent = function(DE_COMPAT){
           return DE_COMPAT ? function(node, event){ return node.dispatchEvent(event) }
                            : function(node, event, now, then){
                                  if ( node === root )
@@ -2171,7 +2171,7 @@
           ]
 
           function redispatchEvent(e, node, type, ne, i, l){
-              ne = createCustomEvent(type, { bubbles: e.bubbdles, cancelable: e.cancelable, detail: e.detail })
+              ne = createCustomEvent(type, { bubbles: e.bubbles, cancelable: e.cancelable, detail: e.detail })
 
               for ( i = 0, l = toCloneProps.length; i < l; i++ )
                 ne[toCloneProps[i]] = e[toCloneProps[i]]
@@ -2563,7 +2563,7 @@
                             node = { sheet: document.styleSheets[document.styleSheets.length-1] }
                           }
                           
-                          node.id = node.id || Uuid.uuid(9, 16, {0: "S", 1: "S", 2: "-"})
+                          node.id = node.id || "SS-"+Uuid.uuid(6, 16)
                           
                           return node
                       }( this, args.pop() )
