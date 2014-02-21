@@ -195,20 +195,15 @@
         }( isNative(String.prototype.trim) )
 
       , escapeHTML = ns.escapeHTML = function(dummy){
-            if ( "textContent" in dummy )
-              return function(str){
-                  dummy.textContent = str
-                  return dummy.textContent
-              }
             return function(str){
-                dummy.innerText = str
-                return dummy.innerText
+                dummy.nodeValue = str
+                return dummy.nodeValue
             }
         }( document.createTextNode("") )
 
       , enumerate = ns.enumerate = function(hasObjectKeys){
             return function(o){
-                var k, rv
+                var k, i, l, rv
 
                 if ( hasObjectKeys )
                   try {
@@ -218,9 +213,14 @@
 
                 rv = []
                 o = !!o ? (!!o.callee ? slice(o) : o) : {}
-
-                for ( k in o ) if ( rv.hasOwnProperty.call(o, k) )
-                  rv.push(k)
+                
+                if ( typeof o !== "string" ) {
+                  for ( k in o ) if ( rv.hasOwnProperty.call(o, k) )
+                    rv.push(k)
+                } else {
+                  for ( i = 0, l = o.length; i < l; i++ )
+                    rv[i] = i
+                }
 
                 return rv
             }
@@ -920,7 +920,7 @@
 
               this.__pointer__ = -1
               this.__range__ = []
-
+              
               for ( ; i < l; i++ )
                 this.__range__[i] = opt_keys ? [ keys[i] ] : [ keys[i], arguments[0][keys[i]] ]
           }
@@ -3075,4 +3075,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a32" });
+}(window, { version: "ES3-0.6.0a33" });
