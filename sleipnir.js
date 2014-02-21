@@ -240,7 +240,7 @@
 
                 fn = arguments[0] && typeof arguments[0].handleInvoke == "function" ? ( ctx = arguments[0], ctx.handleInvoke )
                    : typeof arguments[0] == "function" ? arguments[0]
-                   : function(args){ /*console.dir(args);*/ throw new Error("sleipnir.invoke, invalid function/invokeHandler") }(arguments)
+                   : function(args){ throw new Error("sleipnir.invoke, invalid function/invokeHandler") }(arguments)
 
                 args = isArray(arguments[1]) ? arguments[1]
                      : arguments[1] && ( (!STRICT_MODE&&!!arguments[1].callee)||toType(arguments[1]) == "[object Arguments]" ) ? arguments[1]
@@ -2542,7 +2542,7 @@
 
                           if ( external && statics.isLocalCSSFile(_node) ) {
                             node = nodeExpression.parse("link"+(typeof args[0] == "string" ? args.shift() : "")+"[rel=stylesheet][href=@url@]", {url: _node}).tree.childNodes[0]
-
+                            
                             domReady.then(function(nodes){
                                 nodes.head.appendChild(node)
                             })
@@ -2560,7 +2560,7 @@
                             })
                           } else {
                             document.createStyleSheet(),
-                            node = { sheet: document.styleSheets[document.styleSheets.length-1] }
+                            node = document.styleSheets[document.styleSheets.length-1].owningElement
                           }
                           
                           node.id = node.id || "SS-"+Uuid.uuid(6, 16)
@@ -2575,14 +2575,14 @@
                                   return setTimeout(wait, 4)
 
                                 try {
-                                    if ( node.sheet )
+                                    if ( STYLESHEET_COMPAT & 1 )
                                       node.sheet.cssRules.length
                                     else
                                       node.styleSheet.rules.length
                                 } catch(e){
                                   return setTimeout(wait, 4)
                                 }
-
+                                
                                 sheet.__sheet__ = node.sheet||node.styleSheet
 
                                 sheet.rule(startingRules)
@@ -2626,7 +2626,8 @@
                     }(this, args.shift() )
 
                   selector = typeof args[0] == "string" ? args.shift() : toType(args.shift())
-                  cssText = typeof args[0] == "string" ? "{"+args.shift()+"}" : "{}"
+                  cssText = STYLESHEET_COMPAT & 1  ? typeof args[0] == "string" ? "{"+args.shift()+"}" : "{}"
+                                                   : typeof args[0] == "string" ? args.shift() : " "
 
                   output = new Promise(function(sheet){
                       return function(resolve){
@@ -2636,7 +2637,7 @@
                               if ( STYLESHEET_COMPAT & 1 )
                                 invoke(sheet.__sheet__.insertRule, [selector+cssText, idx], sheet.__sheet__)
                               else
-                                invoke(sheet.__sheet__.addRule, [selector, cssText, idx], sheet.__sheet__)
+                                sheet.__sheet__.addRule(selector, cssText, idx)
 
                               resolve( (sheet.__sheet__.cssRules||sheet.__sheet__.rules)[idx])
                           })
@@ -3074,4 +3075,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a31" });
+}(window, { version: "ES3-0.6.0a32" });
