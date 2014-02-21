@@ -940,6 +940,7 @@
     , Router = ns.Router = klass(function(Super, statics){
           statics.defaultDispatcher = function(cache){
               function getRule(str, regexp, assignments, split, i, l){
+                  //console.log(cache[str], str)
                   if ( !cache.hasOwnProperty(str) )
                     if ( str.indexOf(":") == -1 )
                       cache[str] = new RegExp(str)
@@ -950,13 +951,13 @@
                           regexp.push("([^\\\/]*)")
                         else
                           regexp.push(split[i])
-
+                      
                       cache[str] = new RegExp(regexp.join("\\\/"))
-
+                      
                       if ( assignments.length )
                         cache[str].assignments = assignments
                     }
-
+                  
                   return cache[str]
               }
 
@@ -1090,7 +1091,7 @@
                     , next = function(router){
                           return function(){
                               var ite = iterator.next()
-
+                              //console.log(ite)
                               if ( ite === null )
                                 return hits
 
@@ -2633,13 +2634,35 @@
                       return function(resolve){
                           sheet.__stylesheetReady__.then(function(){
                               var idx = (sheet.__sheet__.cssRules||sheet.__sheet__.rules).length||0
+                                , rv
 
                               if ( STYLESHEET_COMPAT & 1 )
                                 invoke(sheet.__sheet__.insertRule, [selector+cssText, idx], sheet.__sheet__)
                               else
                                 sheet.__sheet__.addRule(selector, cssText, idx)
-
-                              resolve( (sheet.__sheet__.cssRules||sheet.__sheet__.rules)[idx])
+                              
+                              rv = sheet.__sheet__.cssRules ? sheet.__sheet__.cssRules[idx]
+                                 : function(cssRules){
+                                      var rv = {
+                                              selectorText: cssRules.selectorText
+                                            , style: {
+                                                  setProperty: function(){
+                                                      return cssRules.style.setAttribute(arguments[0], arguments[1])
+                                                  }
+                                                , getPropertyValue: function(){
+                                                      return cssRules.style.getAttribute(arguments[0])
+                                                  }
+                                              }
+                                          }
+                                        , k
+                                      
+                                      for ( k in cssRules.style ) if ( rv.hasOwnProperty.call(cssRules.style, k) )
+                                        rv.style[k] = cssRules.style[k]
+                                      
+                                      return rv
+                                   }(sheet.__sheet__.rules[idx])
+                              
+                              resolve( rv )
                           })
                       }
                   }(this))
@@ -3075,4 +3098,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a33" });
+}(window, { version: "ES3-0.6.0a34" });
