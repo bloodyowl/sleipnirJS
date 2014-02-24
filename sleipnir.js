@@ -940,19 +940,20 @@
     , Router = ns.Router = klass(function(Super, statics){
           statics.defaultDispatcher = function(cache){
               function getRule(str, regexp, assignments, split, i, l){
-                  //console.log(cache[str], str)
                   if ( !cache.hasOwnProperty(str) )
                     if ( str.indexOf(":") == -1 )
                       cache[str] = new RegExp(str)
-                    else {
+                    else { 
                       for ( assignments = [], regexp = [], split = str.split("/"), i = 0, l = split.length; i < l; i++ )
-                        if ( split[i][0] === ":" )
+                        if ( split[i].charAt(0) === ":" )
                           assignments.push(split[i].slice(1)),
                           regexp.push("([^\\\/]*)")
                         else
                           regexp.push(split[i])
                       
                       cache[str] = new RegExp(regexp.join("\\\/"))
+                      
+                      alert(cache[str])
                       
                       if ( assignments.length )
                         cache[str].assignments = assignments
@@ -1086,13 +1087,13 @@
 
                                   return _next()
                               }
-                          }
+                          } 
                       }(this)
                     , next = function(router){
                           return function(){
                               var ite = iterator.next()
-                              //console.log(ite)
-                              if ( ite === null )
+                              
+                              if ( ite == null )
                                 return hits
 
                               _hit = ite[0] === "*" ? true
@@ -3098,4 +3099,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a34" });
+}(window, { version: "ES3-0.6.0a35" });
