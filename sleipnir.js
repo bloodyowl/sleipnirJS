@@ -2189,32 +2189,44 @@
 
           return {
               pointerdown: function(node){
+                  if ( "onpointerdown" in node )
+                    return
+                  
                   node.__pointerdownproxy__ = node.__pointerdownproxy__ || function(e){ redispatchEvent(e, node, "pointerdown") }
-                  addEventListener(node, "mousedown touchstart", node.__pointerdownproxy__, true)
+                  addEventListener(node, "MSPointerDown" in node ? "MSPointerDown" : "mousedown touchstart", node.__pointerdownproxy__, true)
               }
             , pointerup: function(node){
+                  if ( "onpointerup" in node)
+                    return
+                  
                   node.__pointerupproxy__ = node.__pointerupproxy__ || function(e){ redispatchEvent(e, node, "pointerup") }
-                  addEventListener(node, "mouseup touchend", node.__pointerupproxy__, true)
+                  addEventListener(node, "MSPointerUp" in node ? "MSPointerUp" : "mouseup touchend", node.__pointerupproxy__, true)
               }
             , pointermove: function(node){
+                  if ( "onpointermove" in node)
+                    return
                   node.__pointermoveproxy__ = node.__pointermoveproxy__ || function(e){ redispatchEvent(e, node, "pointermove") }
-                  addEventListener(node, "mousemove touchmove", node.__pointermoveproxy__, true)
+                  addEventListener(node, "MSPointerMove" in node ? "MSPointerMove" : "mousemove touchmove", node.__pointermoveproxy__, true)
               }
             , pointerenter: function(node, nevents){
+                  if ( "onpointerenter" in node )
+                    return
                   node.__pointerenterproxy__ = node.__pointerenterproxy__ || function(e){
                       if ( e.type === "mouseover" && contains(node, e.target) )
                         return
                       redispatchEvent(e, node, "pointerenter")
                   }
-                  addEventListener(node, ("onmouseenter" in root ? "mouseenter" : "mouseover") + "touchenter", node.__pointerenterproxy__, true)
+                  addEventListener(node, "MSPointerEnter" in node ? "MSPointerEnter" : ("onmouseenter" in root ? "mouseenter" : "mouseover") + "touchenter", node.__pointerenterproxy__, true)
               }
             , pointerleave: function(node){
+                  if ( "onpointerleave" in node)
+                    return
                   node.__pointerleaveproxy__ = node.__pointerleaveproxy__ || function(e){
                       if ( e.type === "mouseout" && contains(node, e.target) )
                         return
                       redispatchEvent(e, node, "pointerleave")
                   }
-                  addEventListener(node, ("onmouseleave" in root ? "mouseleave" : "mouseout") + "touchleave", node.__pointerleaveproxy__, true)
+                  addEventListener(node, "MSPointerLeave" in node ? "MSPointerLeave" : ("onmouseleave" in root ? "mouseleave" : "mouseout") + "touchleave", node.__pointerleaveproxy__, true)
               }
           }
       }()
@@ -2234,7 +2246,7 @@
                   if ( hooked && !AEL && node === root )
                     return domReady(function(nodes){
                         invoke(addEventListener, [nodes.body, events.join(" "), eventHandler])
-                    }), undefined
+                    }), void 0
 
                   AEL ? node.addEventListener(events[i], eventHandler, !!capture)
                       : node.attachEvent(function(i){
@@ -3182,4 +3194,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a36" });
+}(window, { version: "ES3-0.6.0a37" });
