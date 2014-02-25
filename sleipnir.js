@@ -66,6 +66,9 @@
 
             return 0
         }( BLOB_COMPAT )
+      , CSS_PROPERTIES_COMPAT = CONST.CSS_PROPERTIES_COMPAT = function(props){
+            return typeof props.setProperty == "function" && typeof props.getPropertyCSSValue == "function" ? 1 : 0
+        }( document.createElement("div").style )
       , TOP_DOMAIN = CONST.TOP_DOMAIN = function(split, i, l, curr, hit){
             function cookie(domain, cookiestr){
                 cookiestr = "__sleipTDT__=tdt"
@@ -952,8 +955,6 @@
                           regexp.push(split[i])
                       
                       cache[str] = new RegExp(regexp.join("\\\/"))
-                      
-                      alert(cache[str])
                       
                       if ( assignments.length )
                         cache[str].assignments = assignments
@@ -2518,7 +2519,86 @@
           }
       })
 
-
+    
+    , CSSRules = ns.CSSRules = klass(function(Super, statics){
+          
+          return {
+              constructor: function(){
+                  var args = slice(arguments)
+                    , setProps = isObject(args[args.length-1]) ? args.pop() : null
+                  
+                  this._cssProperties = args[0] && args[0].nodeType == 1 ? args.pop().style
+                                      : args[0] && ( args[0].getPropertyCSSValue || (args[0].getAttribute&&args[0].setAttribute) ) ? args.pop()
+                                      : document.createElement("div").style
+              }
+            , cssText: function(){
+                  if ( !arguments.length )
+                    return this._cssProperties.cssText
+                  
+                  this._cssProperties.cssText = typeof arguments[0] == "string" ? arguments[0] : ""
+              }
+            , setProperty: function(){
+                  var prop, value, priority
+                  
+                  if ( arguments.length == 1 && isObject(arguments[0]) )
+                    return function(cssProperties, props, k){
+                        for ( k in props ) if ( props.hasOwnProperty(k) )
+                          cssProperties.setProperty(k, props[k])
+                    }( this, arguments[0] )
+                  
+                  prop = typeof arguments[0] == "string" ? arguments[0] : ""
+                  value = typeof arguments[1] == "string" ? arguments[1] : ""
+                  priority = typeof arguments[2] == "string" ? arguments[2] : null
+                  
+                  if ( CSS_PROPERTIES_COMPAT )
+                    return this._cssProperties.setProperty(prop, value, priority)
+                  return this._cssProperties.setAttribute(prop, value)
+              }
+            , getProperty: function(){
+                  var args = slice(arguments)
+                    , cb = isInvocable(args[args.length-1]) ? args.pop() : null
+                    , props = args.length > 1 ? args
+                            : args.length == 1 ? [args[0]]
+                            : []
+                    , i = 0, l = props.length
+                    , rv = []
+                  
+                  for ( ; i < l; i++ )
+                    if ( CSS_PROPERTIES_COMPAT & 1 )
+                      rv[i] = this._cssProperties.getPropertyValue(props[i])
+                    else
+                      rv[i] = this._cssProperties.getAttribute(props[i])
+                  
+                  if ( cb )
+                    invoke(cb, rv)
+                  
+                  if ( l == 1 )
+                    return rv[0]
+                  return rv
+              }
+            , removeProperty: function(){
+                  var prop = typeof arguments[0] == "string" ? arguments[0] : ""
+                  
+                  if ( CSS_PROPERTIES_COMPAT & 1 )
+                    this._cssProperties.removeProperty(prop)
+              }
+            , propertyPriority: function(){
+                  var prop, value
+                  
+                  if ( !CSS_PROPERTIES_COMPAT )
+                    return null
+                  
+                  prop = typeof arguments[0] == "string" ? arguments[0] : ""
+                  value = typeof arguments[1] == "string" ? arguments[1] : null
+                  
+                  if ( value !== null )
+                    this.setProperty(prop, this.getProperty(prop), value)
+                  else
+                    return this._cssProperties.getPropertyPriority(prop)
+              }
+          }
+      })
+    
     , StyleSheet = ns.StyleSheet = klass(function(Super, statics){
           statics.isLocalCSSFile = function(a){
               return function(url){
@@ -2642,6 +2722,8 @@
                               else
                                 sheet.__sheet__.addRule(selector, cssText, idx)
                               
+                              rv = new CSSRules( CSS_PROPERTIES_COMPAT & 1 ? sheet.__sheet__.cssRules[idx].style : sheet.__sheet__.rules[idx].style)
+                              /*
                               rv = sheet.__sheet__.cssRules ? sheet.__sheet__.cssRules[idx]
                                  : function(cssRules){
                                       var rv = {
@@ -2662,6 +2744,7 @@
                                       
                                       return rv
                                    }(sheet.__sheet__.rules[idx])
+                              */
                               
                               resolve( rv )
                           })
@@ -3099,4 +3182,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a35" });
+}(window, { version: "ES3-0.6.0a36" });
