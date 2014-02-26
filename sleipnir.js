@@ -925,7 +925,7 @@
               this.__range__ = []
               
               for ( ; i < l; i++ )
-                this.__range__[i] = opt_keys ? [ keys[i] ] : [ keys[i], arguments[0][keys[i]] ]
+                this.__range__[i] = opt_keys ? [ keys[i] ] : [ keys[i], typeof arguments[0] == "string" ? arguments[0].charAt(keys[i]) : arguments[0][keys[i]] ]
           }
         , next: function(){
               var idx = ++this.__pointer__
@@ -2161,7 +2161,7 @@
                                      then = node[event.propertyName]
 
                                      if ( now === then )
-                                       node[event.propertyName] = (+node[event.propertyName]) +1
+                                       node[event.propertyName] = (parseInt(node[event.propertyName]||0, 10) + 1).toString()
                                  }, 4)
                              }
       }( "dispatchEvent" in root )
@@ -2635,7 +2635,11 @@
                           }( (typeof _node == "string" ? _node : "").split("!") )
 
                           if ( external && statics.isLocalCSSFile(_node) ) {
-                            node = nodeExpression.parse("link"+(typeof args[0] == "string" ? args.shift() : "")+"[rel=stylesheet][href=@url@]", {url: _node}).tree.childNodes[0]
+                            if ( STYLESHEET_COMPAT & 1 )
+                              node = nodeExpression.parse("link"+(typeof args[0] == "string" ? args.shift() : "")+"[rel=stylesheet][href=@url@]", {url: _node}).tree.childNodes[0]
+                            else
+                              document.createStyleSheet(_node, document.styleSheets.length),
+                              node = document.styleSheets[document.styleSheets.length-1].owningElement
                             
                             domReady.then(function(nodes){
                                 nodes.head.appendChild(node)
@@ -3194,4 +3198,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a37" });
+}(window, { version: "ES3-0.6.0a38" });
