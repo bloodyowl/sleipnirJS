@@ -2853,7 +2853,7 @@
 
     , Matrix = klass({
           constructor: function(bcr, origin){
-              this.__bcr__ = bcr || BCR.getBoundingClientRect(docBody)
+              this.__bcr__ = bcr || ClientRect.getBoundingClientRect(docBody)
               this.__origin__ = origin || { x:0, y:0 }
           }
         , left: function(){ return Math.round( this.__bcr__.left - this.__origin__.x ) }
@@ -2874,7 +2874,8 @@
       })
 
     , ClientRect = ns.ClientRect = klass(function(Super, statics){
-           function getBoundingClientRect(node){
+           
+           statics.getBoundingClientRect = function(node){
               var bcr, clientT, clientL, offsetX, offsetY
 
               bcr = node.getBoundingClientRect()
@@ -2893,7 +2894,7 @@
               }
           }
 
-          function getEventCoordinates(e){
+          statics.getEventCoordinates = function(e){
               var offsetX, offsetY
 
               offsetX = root.pageXOffset || root.scrollX || docElt.scrollLeft || docBody.scrollLeft || 0
@@ -2934,14 +2935,14 @@
 
                     , output = new Promise(function(resolve){
                           domReady.then(function(){
-                              var ncr = getBoundingClientRect(node)
+                              var ncr = statics.getBoundingClientRect(node)
                                 , rcr
 
                               if ( !referenceCardinalPoint ) {
                                 if ( referenceEvent )
-                                  rcr = getEventCoordinates(referenceEvent)
+                                  rcr = statics.getEventCoordinates(referenceEvent)
                                 else if ( referenceNode )
-                                  rcr = getBoundingClientRect(referenceNode)
+                                  rcr = statics.getBoundingClientRect(referenceNode)
                                 else if ( referenceOrigin )
                                   rcr = { left: referenceOrigin.x, top: referenceOrigin.y }
                                 else
@@ -2950,7 +2951,7 @@
                                 return resolve( new Matrix(ncr, new Point(rcr.left, rcr.top)) )
                               }
 
-                              return new BCR(referenceNode).compute(function(matrix){
+                              return new ClientRect(referenceNode).compute(function(matrix){
                                   resolve( new Matrix( ncr, matrix[referenceCardinalPoint]()) )
                               })
                           })
@@ -3198,4 +3199,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a38" });
+}(window, { version: "ES3-0.6.0a39" });
