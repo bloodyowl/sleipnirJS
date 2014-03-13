@@ -216,7 +216,7 @@
 
                 rv = []
                 o = !!o ? (!!o.callee ? slice(o) : o) : {}
-                
+
                 if ( typeof o !== "string" ) {
                   for ( k in o ) if ( rv.hasOwnProperty.call(o, k) )
                     rv.push(k)
@@ -589,7 +589,7 @@
                     throw arguments[1]
                   else if ( typeof arguments[1] == "string" )
                     throw new Error(arguments[1])
-                
+
                 if ( handlers )
                   if ( isInvocable(handlers.handleEvent) )
                     invoker.invoke(handlers.handleEvent, args, handlers)
@@ -923,7 +923,7 @@
 
               this.__pointer__ = -1
               this.__range__ = []
-              
+
               for ( ; i < l; i++ )
                 this.__range__[i] = opt_keys ? [ keys[i] ] : [ keys[i], typeof arguments[0] == "string" ? arguments[0].charAt(keys[i]) : arguments[0][keys[i]] ]
           }
@@ -946,20 +946,20 @@
                   if ( !cache.hasOwnProperty(str) )
                     if ( str.indexOf(":") == -1 )
                       cache[str] = new RegExp(str)
-                    else { 
+                    else {
                       for ( assignments = [], regexp = [], split = str.split("/"), i = 0, l = split.length; i < l; i++ )
                         if ( split[i].charAt(0) === ":" )
                           assignments.push(split[i].slice(1)),
                           regexp.push("([^\\\/]*)")
                         else
                           regexp.push(split[i])
-                      
+
                       cache[str] = new RegExp(regexp.join("\\\/"))
-                      
+
                       if ( assignments.length )
                         cache[str].assignments = assignments
                     }
-                  
+
                   return cache[str]
               }
 
@@ -1051,7 +1051,7 @@
                               if ( !isArray(handler) ) {
                                 if ( ite[0] !== "*" )
                                   hits++
-                                
+
                                 _next = next
                                 rv = invoke(handler.handleRoute||handler, function(o, i, l){
                                           o = { $req: route, $res: _hit, $args: args.slice(0), $next: _next, 0: _hit }
@@ -1088,12 +1088,12 @@
 
                                   return _next()
                               }
-                          } 
+                          }
                       }(this)
                     , next = function(router){
                           return function(){
                               var ite = iterator.next()
-                              
+
                               if ( ite == null )
                                 return hits
 
@@ -1142,7 +1142,7 @@
               constructor: function(){
                   if ( arguments[0] )
                     this.setItem(arguments[0])
-                  
+
                   if ( this.__defaults__ )
                     this.setItem(this.__defaults__)
               }
@@ -1429,16 +1429,16 @@
           function check(p){
               return (COMPUTED_STYLE_COMPAT ? cssProperties.getPropertyValue(p) : cssProperties[p]) != void 0
           }
-          
+
           hooks = {}
-          
+
           void function(w3c, webkit){
               if ( !check(w3c) && check(webkit) )
                 hooks[w3c] = function(v){
                     return [{ key: webkit, value: v }]
                 }
           }("transform", "-webkit-transform")
-          
+
           return hooks
       }( COMPUTED_STYLE_COMPAT ? getComputedStyle(document.createElement("div")) : document.documentElement.currentStyle )
 
@@ -2092,7 +2092,7 @@
               }
           }
       }()
-      
+
     , requestAnimationFrame = ns.requestAnimationFrame = function(){
           return "requestAnimationFrame" in root ? function(){ invoke(root.requestAnimationFrame, arguments) }
                : "mozRequestAnimationFrame" in root ? function(){ invoke(root.mozRequestAnimationFrame, arguments) }
@@ -2191,14 +2191,14 @@
               pointerdown: function(node){
                   if ( "onpointerdown" in node )
                     return
-                  
+
                   node.__pointerdownproxy__ = node.__pointerdownproxy__ || function(e){ redispatchEvent(e, node, "pointerdown") }
                   addEventListener(node, "MSPointerDown" in node ? "MSPointerDown" : "mousedown touchstart", node.__pointerdownproxy__, true)
               }
             , pointerup: function(node){
                   if ( "onpointerup" in node)
                     return
-                  
+
                   node.__pointerupproxy__ = node.__pointerupproxy__ || function(e){ redispatchEvent(e, node, "pointerup") }
                   addEventListener(node, "MSPointerUp" in node ? "MSPointerUp" : "mouseup touchend", node.__pointerupproxy__, true)
               }
@@ -2384,24 +2384,24 @@
                 , viewHandler, domEvents
 
               viewHandler = isInvocable(args[args.length-1]) ? args.pop() : null
-              
+
               if ( Promise.isImplementedBy(args[args.length-1]) )
                 return this.__viewReady__ = function(view, promise){
                     return view.__viewReady = promise.then({
                         handleResolve: function(data){
                               args.push(data)
-                        
+
                               if ( viewHandler )
                                 args.push(viewHandler)
-                        
+
                               invoke(view.initView, args, view)
                           }
                         , handleReject: function(){
                               args.push({})
-                        
+
                               if ( viewHandler )
                                 args.push(viewHandler)
-                        
+
                               invoke(view.initView, args, view)
                           }
                     })
@@ -2411,7 +2411,7 @@
               this.__data__ = args[args.length-1] && Model.isImplementedBy(args[args.length-1]) ? args.pop()
                             : args.length > 1 && isObject(args[args.length-1]) ? new this.__useModel__(args.pop())
                             : new this.__useModel__
-              
+
               this.__template__ = typeof args[0] == "string" ? trim(args.shift())
                                 : isObject(args[0]) ? function(templateDict){
                                       domEvents = isObject(templateDict.events) ? templateDict.events : null
@@ -2475,9 +2475,9 @@
           }
         , recover: function(){
               var i, l
-              
+
               this.__fragment__ = this.__fragment__ || document.createDocumentFragment()
-              
+
               if ( !this.__fragment__.childNodes.length )
                 for ( i = 0, l = this.__elements__.root.length; i < l; i++ )
                   this.__fragment__.appendChild(this.__elements__.root[i])
@@ -2492,7 +2492,7 @@
                         $.invoke(view.element, args, view)
                     }
                 }(this, arguments))
-              
+
               var args = slice(arguments)
                 , elementHandler = isInvocable(args[args.length-1]) ? args.pop() : null
                 , requested = args.length > 1 ? args
@@ -2504,7 +2504,7 @@
               for ( ; i < l; i++ )
                   requested[i] = typeof requested[i] == "string" ? requested[i] : toType(requested[i]),
                   elements[i] = this.__elements__.hasOwnProperty(requested[i]) ? this.__elements__[requested[i]].length > 1 ? this.__elements__[requested[i]] : this.__elements__[requested[i]][0] : null
-              
+
               if ( elementHandler )
                 return invoke(elementHandler, elements), void 0
               return elements.length > 1 ? elements : elements[0]
@@ -2531,14 +2531,14 @@
           }
       })
 
-    
+
     , CSSRules = ns.CSSRules = klass(function(Super, statics){
-          
+
           return {
               constructor: function(){
                   var args = slice(arguments)
                     , setProps = isObject(args[args.length-1]) ? args.pop() : null
-                  
+
                   this._cssProperties = args[0] && args[0].nodeType == 1 ? args.pop().style
                                       : args[0] && ( args[0].getPropertyCSSValue || (args[0].getAttribute&&args[0].setAttribute) ) ? args.pop()
                                       : document.createElement("div").style
@@ -2546,22 +2546,22 @@
             , cssText: function(){
                   if ( !arguments.length )
                     return this._cssProperties.cssText
-                  
+
                   this._cssProperties.cssText = typeof arguments[0] == "string" ? arguments[0] : ""
               }
             , setProperty: function(){
                   var prop, value, priority
-                  
+
                   if ( arguments.length == 1 && isObject(arguments[0]) )
                     return function(cssProperties, props, k){
                         for ( k in props ) if ( props.hasOwnProperty(k) )
                           cssProperties.setProperty(k, props[k])
                     }( this, arguments[0] )
-                  
+
                   prop = typeof arguments[0] == "string" ? arguments[0] : ""
                   value = typeof arguments[1] == "string" ? arguments[1] : ""
                   priority = typeof arguments[2] == "string" ? arguments[2] : null
-                  
+
                   if ( CSS_PROPERTIES_COMPAT )
                     return this._cssProperties.setProperty(prop, value, priority)
                   return this._cssProperties.setAttribute(prop, value)
@@ -2574,35 +2574,35 @@
                             : []
                     , i = 0, l = props.length
                     , rv = []
-                  
+
                   for ( ; i < l; i++ )
                     if ( CSS_PROPERTIES_COMPAT & 1 )
                       rv[i] = this._cssProperties.getPropertyValue(props[i])
                     else
                       rv[i] = this._cssProperties.getAttribute(props[i])
-                  
+
                   if ( cb )
                     invoke(cb, rv)
-                  
+
                   if ( l == 1 )
                     return rv[0]
                   return rv
               }
             , removeProperty: function(){
                   var prop = typeof arguments[0] == "string" ? arguments[0] : ""
-                  
+
                   if ( CSS_PROPERTIES_COMPAT & 1 )
                     this._cssProperties.removeProperty(prop)
               }
             , propertyPriority: function(){
                   var prop, value
-                  
+
                   if ( !CSS_PROPERTIES_COMPAT )
                     return null
-                  
+
                   prop = typeof arguments[0] == "string" ? arguments[0] : ""
                   value = typeof arguments[1] == "string" ? arguments[1] : null
-                  
+
                   if ( value !== null )
                     this.setProperty(prop, this.getProperty(prop), value)
                   else
@@ -2610,7 +2610,7 @@
               }
           }
       })
-    
+
     , StyleSheet = ns.StyleSheet = klass(function(Super, statics){
           statics.isLocalCSSFile = function(a){
               return function(url){
@@ -2640,7 +2640,7 @@
                             else
                               document.createStyleSheet(_node, document.styleSheets.length),
                               node = document.styleSheets[document.styleSheets.length-1].owningElement
-                            
+
                             domReady.then(function(nodes){
                                 nodes.head.appendChild(node)
                             })
@@ -2660,12 +2660,12 @@
                             document.createStyleSheet(),
                             node = document.styleSheets[document.styleSheets.length-1].owningElement
                           }
-                          
+
                           node.id = node.id || "SS-"+Uuid.uuid(6, 16)
-                          
+
                           return node
                       }( this, args.pop() )
-                    
+
                     this.__stylesheetReady__ = new Promise(function(sheet){
                         return function(resolve){
                             function wait(){
@@ -2680,7 +2680,7 @@
                                 } catch(e){
                                   return setTimeout(wait, 4)
                                 }
-                                
+
                                 sheet.__sheet__ = node.sheet||node.styleSheet
 
                                 sheet.rule(startingRules)
@@ -2737,7 +2737,7 @@
                                 invoke(sheet.__sheet__.insertRule, [selector+cssText, idx], sheet.__sheet__)
                               else
                                 sheet.__sheet__.addRule(selector, cssText, idx)
-                              
+
                               rv = new CSSRules( CSS_PROPERTIES_COMPAT & 1 ? sheet.__sheet__.cssRules[idx].style : sheet.__sheet__.rules[idx].style)
                               /*
                               rv = sheet.__sheet__.cssRules ? sheet.__sheet__.cssRules[idx]
@@ -2754,14 +2754,14 @@
                                               }
                                           }
                                         , k
-                                      
+
                                       for ( k in cssRules.style ) if ( rv.hasOwnProperty.call(cssRules.style, k) )
                                         rv.style[k] = cssRules.style[k]
-                                      
+
                                       return rv
                                    }(sheet.__sheet__.rules[idx])
                               */
-                              
+
                               resolve( rv )
                           })
                       }
@@ -2867,14 +2867,14 @@
         , N: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width/2 - this.__origin__.x), Math.round(this.__bcr__.top - this.__origin__.y)) }
         , NE: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width - this.__origin__.x), Math.round(this.__bcr__.top - this.__origin__.y)) }
         , E: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height/2 - this.__origin__.y)) }
-        , SE: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height - this.__origin__y)) }
-        , S: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width/2 - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height - this.__origin__y)) }
-        , SW: function(){ return new Point(Math.round(this.__bcr__.left - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height - this.__origin__y)) }
+        , SE: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height - this.__origin__.y)) }
+        , S: function(){ return new Point(Math.round(this.__bcr__.left + this.__bcr__.width/2 - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height - this.__origin__.y)) }
+        , SW: function(){ return new Point(Math.round(this.__bcr__.left - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height - this.__origin__.y)) }
         , W: function(){ return new Point(Math.round(this.__bcr__.left - this.__origin__.x), Math.round(this.__bcr__.top + this.__bcr__.height/2 - this.__origin__.y)) }
       })
 
     , ClientRect = ns.ClientRect = klass(function(Super, statics){
-           
+
            statics.getBoundingClientRect = function(node){
               var bcr, clientT, clientL, offsetX, offsetY
 
@@ -2886,7 +2886,7 @@
 
               return {
                   left: node === docElt || node === docBody ? offsetX : bcr.left + offsetX - clientL
-                , top: node === docElt || node === docBody ? offsetY : bcr.left + offsetY - clientL
+                , top: node === docElt || node === docBody ? offsetY : bcr.top + offsetY - clientL
                 , width: bcr.width || bcr.right - bcr.left
                 , contentWidth: node.scrollWidth
                 , height: bcr.height || bcr.bottom - bcr.top
@@ -2999,13 +2999,13 @@
 
                   this.__properties__ = function(transition, aprops, rprops, k, aCssText, rCssText, keys){
                       rCssText = []
-                      
+
                       keys = enumerate(aprops)
                       while ( keys.length )
                         void function(k, hooks){
                             if ( !cssHooks.hasOwnProperty(k) )
                               return
-                            
+
                             hooks = cssHooks[k](aprops[k])
                             while ( hooks.length )
                               void function(hook){
@@ -3014,7 +3014,7 @@
                               }( hooks.shift() )
                             delete aprops[k]
                         }( keys.shift() )
-                      
+
                       for ( k in aprops ) if ( aprops.hasOwnProperty(k) )
                         if ( (COMPUTED_STYLE_COMPAT ? cssProperties.getPropertyValue(k) : cssProperties[k]) != void 0 ) {
                           rprops.push(k)
@@ -3102,27 +3102,27 @@
 
                             //node.dataset.sleipfxtransitionid = transitionId
                             node.setAttribute("data-sleipfxtransitionid", transitionId)
-                            
+
                             domReady.then(function(nodes, keys){
                                 if ( !nodes.body.contains(node) )
                                   return reject()
-                                
+
                                 keys = enumerate(props)
                                 while ( keys.length )
                                   void function(k, hooks){
                                       if ( !cssHooks.hasOwnProperty(k) )
                                         return
-                                      
+
                                       hooks = cssHooks[k](props[k])
                                       while ( hooks.length )
                                         void function(hook){
                                             if ( !props[hook.key] )
                                               props[hook.key] = hook.value
                                         }( hooks.shift() )
-                                      
+
                                       delete props[k]
                                   }( keys.shift() )
-                                
+
                                 for ( k in props ) if ( props.hasOwnProperty(k) ) {
                                   if ( indexOf(transition.__properties__, k ) != -1 )
                                     void function( k, prop, clone, computedStyles, cloneComputedStyles, curr, next ){
