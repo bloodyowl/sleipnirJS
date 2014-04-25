@@ -1032,7 +1032,7 @@
                     while ( this.__routes[route] && (idx = indexOf(this.__routes[route], handler), idx > -1) ) {
                         this.__routes__[route].splice(idx, 1)
 
-                        if ( this.__routes__[route].length )
+                        if ( !this.__routes__[route].length )
                           delete this.__routes[route]
                     }
               }
@@ -3199,4 +3199,4 @@
     else
       root.sleipnir = __sleipnir__
 
-}(window, { version: "ES3-0.6.0a39" });
+}(window, { version: "ES3-0.6.0a41" });
